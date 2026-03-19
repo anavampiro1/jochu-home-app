@@ -797,106 +797,99 @@
 <div class="toast" id="toast"></div>
 
 <script>
-// ═══ DATA ═══
-const productos = [
-  {nombre:"Hilo Kraft 4mm natural x100",medidas:"x100 metros",costo:2667,efectivo:10000,tarjeta:11800,taller:10000,tipo:"producto"},
-  {nombre:"Hilo Kraft 2mm natural x100",medidas:"x100 metros",costo:2667,efectivo:10000,tarjeta:11800,taller:10000,tipo:"producto"},
-  {nombre:"Hilo Kraft 4mm negro x100",medidas:"x100 metros",costo:6960,efectivo:15000,tarjeta:17600,taller:15000,tipo:"producto"},
-  {nombre:"Hilo Kraft 4mm natural x50",medidas:"x50 metros",costo:1333,efectivo:5000,tarjeta:5900,taller:5000,tipo:"producto"},
-  {nombre:"Hilo Kraft 2mm natural x50",medidas:"x50 metros",costo:1333,efectivo:5000,tarjeta:5900,taller:5000,tipo:"producto"},
-  {nombre:"Hilo Kraft 4mm negro x50",medidas:"x50 metros",costo:3480,efectivo:7500,tarjeta:8800,taller:7500,tipo:"producto"},
-  {nombre:"Servilletero",medidas:"18x18x5 cm",costo:4000,efectivo:10500,tarjeta:12400,taller:9000,tipo:"producto"},
-  {nombre:"Servilletero Majo",medidas:"13x22x5",costo:4000,efectivo:10500,tarjeta:12400,taller:9000,tipo:"producto"},
-  {nombre:"Cubreservilletero elegante",medidas:"-",costo:4300,efectivo:11000,tarjeta:12900,taller:9500,tipo:"producto"},
-  {nombre:"Lámpara Amapola",medidas:"60x12 cm",costo:8000,efectivo:24000,tarjeta:28200,taller:18000,tipo:"producto"},
-  {nombre:"Lámpara Ines",medidas:"50x35 cm",costo:22000,efectivo:39000,tarjeta:45900,taller:32000,tipo:"producto"},
-  {nombre:"Lampara Emily",medidas:"40x50 diámetro",costo:13000,efectivo:31500,tarjeta:37100,taller:24000,tipo:"producto"},
-  {nombre:"Lampara Londres",medidas:"25x40 diámetro",costo:11000,efectivo:27500,tarjeta:32400,taller:22000,tipo:"producto"},
-  {nombre:"Lampara Londres grande",medidas:"25x50 diámetro",costo:12000,efectivo:29500,tarjeta:34700,taller:24000,tipo:"producto"},
-  {nombre:"Organizador Grande",medidas:"30x17x18 cm",costo:4300,efectivo:11500,tarjeta:13500,taller:10000,tipo:"producto"},
-  {nombre:"Organizador Mediano",medidas:"25x15x15 cm",costo:4300,efectivo:11000,tarjeta:12900,taller:9500,tipo:"producto"},
-  {nombre:"Organizador Chico",medidas:"24x13x9 cm",costo:4300,efectivo:10500,tarjeta:12400,taller:9000,tipo:"producto"},
-  {nombre:"Organizador de botellas",medidas:"35x15x5",costo:4000,efectivo:10000,tarjeta:11800,taller:9000,tipo:"producto"},
-  {nombre:"Organizador baño 11A",medidas:"55x10x10",costo:5000,efectivo:12000,tarjeta:14100,taller:10000,tipo:"producto"},
-  {nombre:"Organizador baño 11B",medidas:"40x10x10",costo:5000,efectivo:12000,tarjeta:14100,taller:10000,tipo:"producto"},
-  {nombre:"Porta papel higiénico circular",medidas:"32x15 cm",costo:5500,efectivo:13200,tarjeta:15500,taller:10500,tipo:"producto"},
-  {nombre:"Espejo Grande",medidas:"diam. 70 cm",costo:8500,efectivo:21000,tarjeta:24700,taller:17500,tipo:"producto"},
-  {nombre:"Espejo Chico",medidas:"diam. 50 cm",costo:7800,efectivo:18700,tarjeta:22000,taller:15500,tipo:"producto"},
-  {nombre:"Cesto circular 5A",medidas:"25x25x25 cm",costo:7000,efectivo:17000,tarjeta:20000,taller:14000,tipo:"producto"},
-  {nombre:"Cesto circular",medidas:"40x40x40 cm",costo:9500,efectivo:23000,tarjeta:27100,taller:18500,tipo:"producto"},
-  {nombre:"Bandeja Grande",medidas:"50x35x5 cm",costo:7500,efectivo:18000,tarjeta:21200,taller:15500,tipo:"producto"},
-  {nombre:"Bandeja mediana",medidas:"45x30x5 cm",costo:7200,efectivo:17000,tarjeta:20000,taller:14500,tipo:"producto"},
-  {nombre:"Bandeja chica",medidas:"35x22x5 cm",costo:5500,efectivo:14000,tarjeta:16500,taller:12000,tipo:"producto"},
-  {nombre:"Bandeja Redonda",medidas:"35 cm diam",costo:7200,efectivo:19000,tarjeta:22400,taller:15500,tipo:"producto"},
-  {nombre:"Porta llaves",medidas:"18x10 cm",costo:2000,efectivo:6000,tarjeta:7100,taller:5000,tipo:"producto"},
-  {nombre:"Estrella grande 16A",medidas:"20 cm",costo:6000,efectivo:14500,tarjeta:17100,taller:12000,tipo:"producto"},
-  {nombre:"Velador con pantalla Ana",medidas:"-",costo:10000,efectivo:24200,tarjeta:28500,taller:19500,tipo:"producto"},
-  {nombre:"Velador cilindro 17A",medidas:"-",costo:5000,efectivo:12700,tarjeta:14900,taller:10500,tipo:"producto"},
-  {nombre:"Porta maceta 18",medidas:"40x40x40",costo:12000,efectivo:29000,tarjeta:34100,taller:20500,tipo:"producto"},
-  {nombre:"Cubiertero 3 divisiones",medidas:"-",costo:6000,efectivo:16000,tarjeta:18800,taller:13500,tipo:"producto"},
-  {nombre:"Candelabro",medidas:"8x25 cm",costo:3500,efectivo:8800,tarjeta:10400,taller:6500,tipo:"producto"},
-  {nombre:"Aro simple 30 cm",medidas:"30 cm",costo:2500,efectivo:5500,tarjeta:6500,taller:4200,tipo:"producto"},
-  {nombre:"Aro simple 50 cm",medidas:"50 cm",costo:3000,efectivo:6600,tarjeta:7800,taller:5300,tipo:"producto"},
-  {nombre:"Aro triple 30 cm",medidas:"30 cm",costo:6500,efectivo:14300,tarjeta:16800,taller:10600,tipo:"producto"},
-  {nombre:"Aro triple 50 cm",medidas:"50 cm",costo:8000,efectivo:17600,tarjeta:20700,taller:13200,tipo:"producto"},
-  {nombre:"Banco madera JC",medidas:"35x35x45 cm",costo:20000,efectivo:32000,tarjeta:37600,taller:27000,tipo:"producto"},
-  {nombre:"Matera",medidas:"-",costo:6500,efectivo:14500,tarjeta:17100,taller:12325,tipo:"producto"},
-  {nombre:"Base madera circular",medidas:"diam 20 cm",costo:1300,efectivo:3000,tarjeta:3500,taller:2200,tipo:"producto"},
-  {nombre:"Base madera ovalada",medidas:"diam 20 cm",costo:1022,efectivo:2400,tarjeta:2800,taller:1500,tipo:"producto"},
-  {nombre:"Base madera rectangular",medidas:"20x15 cm",costo:1100,efectivo:2400,tarjeta:2800,taller:1800,tipo:"producto"},
-  {nombre:"Base madera cuadrada",medidas:"20x20 cm",costo:1300,efectivo:3000,tarjeta:3500,taller:2200,tipo:"producto"},
-  {nombre:"Matriz individual",medidas:"-",costo:3000,efectivo:10000,tarjeta:11800,taller:10000,tipo:"producto"},
-  // COMBOS
-  {nombre:"Combo servilletero",medidas:"18x18x5 cm",costo:6067,efectivo:17000,tarjeta:20000,taller:14000,tipo:"combo"},
-  {nombre:"Combo servilletero Majo",medidas:"13x22x5",costo:5333,efectivo:15500,tarjeta:18200,taller:14000,tipo:"combo"},
-  {nombre:"Combo cubre servilletero Elegante",medidas:"-",costo:5900,efectivo:17000,tarjeta:20000,taller:15500,tipo:"combo"},
-  {nombre:"Combo organizador grande",medidas:"30x17x18 cm",costo:6700,efectivo:20500,tarjeta:24100,taller:19000,tipo:"combo"},
-  {nombre:"Combo organizador mediano",medidas:"25x15x15 cm",costo:6433,efectivo:19500,tarjeta:22900,taller:18000,tipo:"combo"},
-  {nombre:"Combo organizador chico",medidas:"24x13x9 cm",costo:5900,efectivo:17000,tarjeta:20000,taller:15000,tipo:"combo"},
-  {nombre:"Combo matera",medidas:"-",costo:9167,efectivo:24500,tarjeta:28800,taller:22500,tipo:"combo"},
-  {nombre:"Combo bandeja grande",medidas:"50x35x5 cm",costo:10167,efectivo:28000,tarjeta:32900,taller:25500,tipo:"combo"},
-  {nombre:"Combo bandeja mediana",medidas:"45x30x5 cm",costo:9333,efectivo:25000,tarjeta:29400,taller:22500,tipo:"combo"},
-  {nombre:"Combo bandeja chica",medidas:"35x22x5 cm",costo:7500,efectivo:21500,tarjeta:25300,taller:19500,tipo:"combo"},
-  {nombre:"Combo banco",medidas:"-",costo:22667,efectivo:42000,tarjeta:49400,taller:37000,tipo:"combo"},
-  {nombre:"Combo banco espiga",medidas:"-",costo:24547,efectivo:45000,tarjeta:52900,taller:39000,tipo:"combo"},
-  {nombre:"Combo porta llave",medidas:"20x20 cm",costo:2667,efectivo:8500,tarjeta:10000,taller:7500,tipo:"combo"},
-  {nombre:"Combo cubiertero",medidas:"-",costo:7600,efectivo:22000,tarjeta:25900,taller:19500,tipo:"combo"},
-  {nombre:"Combo Velador con pantalla Ana",medidas:"-",costo:12667,efectivo:34000,tarjeta:40000,taller:20500,tipo:"combo"},
-  {nombre:"Combo Velador cilindro",medidas:"-",costo:6333,efectivo:17500,tarjeta:20600,taller:15500,tipo:"combo"},
-  {nombre:"Combo Porta papel higiénico",medidas:"-",costo:6833,efectivo:18000,tarjeta:21200,taller:15500,tipo:"combo"},
-];
+// ═══ CONFIG ═══
+const API_URL = 'https://script.google.com/macros/s/AKfycbz7y6EkhowbqkHy9zl7HAwNF3gCV1K3ngUPTK2aK4LDj39OoxDoTdmlVPH6ZlDKiyyL/exec';
 
-// Sample balance data
-const movimientos = [
-  {fecha:"2025-04-08",tipo:"Ingreso",categoria:"Venta",desc:"Combo servilletero - Majo",monto:10000},
-  {fecha:"2025-04-08",tipo:"Ingreso",categoria:"Venta",desc:"Materiales Agus",monto:27500},
-  {fecha:"2025-03-15",tipo:"Gasto",categoria:"Compra materia prima",desc:"Hilo kraft 24kg",monto:80000},
-  {fecha:"2025-03-10",tipo:"Ingreso",categoria:"Workshop",desc:"Servilletero Villa Cañás",monto:455000},
-  {fecha:"2025-02-20",tipo:"Gasto",categoria:"Gastos merienda",desc:"Workshop Godard",monto:110000},
-  {fecha:"2025-02-15",tipo:"Ingreso",categoria:"Cuota mensual",desc:"Cuotas taller - febrero",monto:70000},
-  {fecha:"2025-01-20",tipo:"Gasto",categoria:"Compra materia prima",desc:"6000 mts hilo kraft",monto:80000},
-];
-
-// Sample alumnas
-let alumnas = [
-  {nombre:"Agus",taller:"Macramé",pagada:true},
-  {nombre:"Majo",taller:"Macramé",pagada:true},
-  {nombre:"Caro",taller:"Macramé",pagada:false},
-  {nombre:"Sofi",taller:"Macramé avanzado",pagada:true},
-  {nombre:"Flor",taller:"Macramé",pagada:false},
-  {nombre:"Juli",taller:"Macramé avanzado",pagada:true},
-];
-
+// ═══ STATE ═══
+let productos = [];
+let movimientos = [];
+let alumnas = [];
 let currentFilter = 'todos';
 
+// ═══ API ═══
+async function apiGet(action) {
+  const res = await fetch(`${API_URL}?action=${action}`);
+  return res.json();
+}
+
+async function apiPost(body) {
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify(body)
+  });
+  return res.json();
+}
+
+function parseProductos(data) {
+  // fila 0 = headers, filas 1+ = datos
+  // cols: 0=nombre,1=medidas,2=hiloM,3=tipoHilo,4=costo,5=efectivo,6=tarjeta,7=taller
+  return data.slice(1).filter(r => r[0] && r[4]).map(r => ({
+    nombre: r[0],
+    medidas: r[1] || '—',
+    costo: parseFloat(r[4]) || 0,
+    efectivo: parseFloat(r[5]) || 0,
+    tarjeta: parseFloat(r[6]) || 0,
+    taller: parseFloat(r[7]) || 0,
+    tipo: String(r[0]).toLowerCase().startsWith('combo') ? 'combo' : 'producto'
+  }));
+}
+
+function parseBalance(data) {
+  // cols: 0=fecha,1=tipo,2=categoria,3=desc,4=ingreso,5=gasto,6=balanceAcum
+  return data.slice(1).filter(r => r[1]).map(r => ({
+    fecha: r[0] ? new Date(r[0]).toISOString().split('T')[0] : '—',
+    tipo: r[1],
+    categoria: r[2] || '',
+    desc: r[3] || '',
+    monto: parseFloat(r[4]) || parseFloat(r[5]) || 0,
+  })).reverse(); // más recientes primero
+}
+
+function showLoading(msg) {
+  document.getElementById('toast').textContent = msg || 'Cargando...';
+  document.getElementById('toast').classList.add('show');
+}
+function hideLoading() {
+  document.getElementById('toast').classList.remove('show');
+}
+
 // ═══ INIT ═══
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   setHeaderDate();
-  renderProductList();
-  populateVentaSelect();
   initVentaFecha();
   initWsFecha();
-  renderBalance();
+
+  // Cargar productos
+  showLoading('⏳ Cargando productos...');
+  try {
+    const res = await apiGet('getProductos');
+    productos = parseProductos(res.data);
+    renderProductList();
+    populateVentaSelect();
+  } catch(e) {
+    showToast('Error cargando productos');
+  }
+
+  // Cargar balance
+  try {
+    const res = await apiGet('getBalance');
+    movimientos = parseBalance(res.data);
+    renderBalance();
+  } catch(e) {
+    showToast('Error cargando balance');
+  }
+
+  hideLoading();
+
+  // Alumnas — por ahora local hasta tener hoja dedicada
+  alumnas = [
+    {nombre:"Agus",taller:"Macramé",pagada:true},
+    {nombre:"Majo",taller:"Macramé",pagada:true},
+    {nombre:"Caro",taller:"Macramé",pagada:false},
+    {nombre:"Sofi",taller:"Macramé avanzado",pagada:true},
+    {nombre:"Flor",taller:"Macramé",pagada:false},
+    {nombre:"Juli",taller:"Macramé avanzado",pagada:true},
+  ];
   renderAlumnas();
 });
 
@@ -1011,25 +1004,25 @@ function calcularPrecioVenta() {
   document.getElementById('precio-preview').classList.add('show');
 }
 
-function registrarVenta() {
+async function registrarVenta() {
   const prod = document.getElementById('venta-producto').value;
   if (!prod) { showToast('Seleccioná un producto'); return; }
   const p = productos.find(x => x.nombre === prod);
   const pago = getPagoSelected();
-  let precio = p.efectivo;
-  if (pago.includes('Tarjeta')) precio = p.tarjeta;
-  else if (pago.includes('Taller')) precio = p.taller;
-  movimientos.unshift({
-    fecha: document.getElementById('venta-fecha').value,
-    tipo: 'Ingreso',
-    categoria: 'Venta',
-    desc: prod,
-    monto: precio
-  });
-  renderBalance();
-  showToast('✓ Venta registrada');
-  document.getElementById('venta-producto').value = '';
-  document.getElementById('precio-preview').classList.remove('show');
+  const via = document.querySelector('#venta-via .radio-chip.selected')?.textContent.trim() || 'Presencial';
+  let precio = p.efectivo, ganancia = p.efectivo - p.costo;
+  if (pago.includes('Tarjeta')) { precio = p.tarjeta; ganancia = p.tarjeta - p.costo; }
+  else if (pago.includes('Taller')) { precio = p.taller; ganancia = p.taller - p.costo; }
+  showToast('⏳ Guardando...');
+  try {
+    await apiPost({ action:'addVenta', fecha: document.getElementById('venta-fecha').value, via, producto: prod, estadoPago: document.getElementById('venta-estado-pago').value, estadoEnvio: document.getElementById('venta-estado-envio').value, precio, ganancia, notas: document.getElementById('venta-notas').value });
+    movimientos.unshift({ fecha: document.getElementById('venta-fecha').value, tipo:'Ingreso', categoria:'Venta', desc: prod, monto: precio });
+    renderBalance();
+    showToast('✓ Venta guardada en Sheets');
+    document.getElementById('venta-producto').value = '';
+    document.getElementById('venta-notas').value = '';
+    document.getElementById('precio-preview').classList.remove('show');
+  } catch(e) { showToast('Error al guardar'); }
 }
 
 // ═══ WORKSHOPS ═══
@@ -1053,7 +1046,7 @@ function calcularWorkshop() {
   document.getElementById('ws-calc').style.display = 'block';
 }
 
-function registrarWorkshop() {
+async function registrarWorkshop() {
   const nombre = document.getElementById('ws-nombre').value;
   if (!nombre) { showToast('Ingresá el nombre del workshop'); return; }
   const precio = +document.getElementById('ws-precio').value || 0;
@@ -1065,33 +1058,16 @@ function registrarWorkshop() {
   const bruto = precio * asist;
   const gastos = (otros * combos) + merienda + nafta;
   const neta = bruto - gastos;
-
-  movimientos.unshift({
-    fecha: document.getElementById('ws-fecha').value,
-    tipo: 'Ingreso',
-    categoria: 'Workshop',
-    desc: nombre,
-    monto: bruto
-  });
-  if (gastos > 0) {
-    movimientos.unshift({
-      fecha: document.getElementById('ws-fecha').value,
-      tipo: 'Gasto',
-      categoria: 'Workshop gastos',
-      desc: `Gastos: ${nombre}`,
-      monto: gastos
-    });
-  }
-  renderBalance();
-  showToast('✓ Workshop registrado');
-  document.getElementById('ws-nombre').value = '';
-  document.getElementById('ws-precio').value = '';
-  document.getElementById('ws-asistentes').value = '';
-  document.getElementById('ws-combos').value = '';
-  document.getElementById('ws-otros').value = '';
-  document.getElementById('ws-merienda').value = '';
-  document.getElementById('ws-nafta').value = '';
-  document.getElementById('ws-calc').style.display = 'none';
+  showToast('⏳ Guardando...');
+  try {
+    await apiPost({ action:'addWorkshop', fecha: document.getElementById('ws-fecha').value, nombre, precio, asistentes: asist, combos, armazon: document.getElementById('ws-armazon').value, otrosXcombo: otros, merienda, nafta, neta, bruto });
+    movimientos.unshift({ fecha: document.getElementById('ws-fecha').value, tipo:'Ingreso', categoria:'Workshop', desc: nombre, monto: bruto });
+    if (gastos > 0) movimientos.unshift({ fecha: document.getElementById('ws-fecha').value, tipo:'Gasto', categoria:'Workshop gastos', desc:`Gastos: ${nombre}`, monto: gastos });
+    renderBalance();
+    showToast('✓ Workshop guardado en Sheets');
+    ['ws-nombre','ws-precio','ws-asistentes','ws-combos','ws-otros','ws-merienda','ws-nafta'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('ws-calc').style.display = 'none';
+  } catch(e) { showToast('Error al guardar'); }
 }
 
 // ═══ ALUMNAS ═══
@@ -1175,23 +1151,22 @@ function closeGastoModal() {
   document.getElementById('gasto-modal').classList.remove('open');
 }
 
-function registrarGasto() {
+async function registrarGasto() {
   const cat = document.getElementById('gasto-categoria').value;
   const desc = document.getElementById('gasto-descripcion').value;
   const monto = +document.getElementById('gasto-monto').value;
   if (!monto) { showToast('Ingresá un monto'); return; }
-  movimientos.unshift({
-    fecha: new Date().toISOString().split('T')[0],
-    tipo: 'Gasto',
-    categoria: cat,
-    desc: desc || cat,
-    monto
-  });
-  renderBalance();
-  closeGastoModal();
-  showToast('✓ Registrado');
-  document.getElementById('gasto-descripcion').value = '';
-  document.getElementById('gasto-monto').value = '';
+  const fecha = new Date().toISOString().split('T')[0];
+  showToast('⏳ Guardando...');
+  try {
+    await apiPost({ action:'addGasto', fecha, categoria: cat, descripcion: desc || cat, monto });
+    movimientos.unshift({ fecha, tipo:'Gasto', categoria: cat, desc: desc || cat, monto });
+    renderBalance();
+    closeGastoModal();
+    showToast('✓ Guardado en Sheets');
+    document.getElementById('gasto-descripcion').value = '';
+    document.getElementById('gasto-monto').value = '';
+  } catch(e) { showToast('Error al guardar'); }
 }
 
 // ═══ UTILS ═══
