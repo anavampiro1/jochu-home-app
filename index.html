@@ -664,16 +664,36 @@
   <section id="screen-alumnas" class="screen">
     <div class="section-hero">
       <h1>Alumnas<br><em>del taller</em></h1>
-      <p>Seguimiento de pagos mensuales</p>
+      <p id="alumnas-mes-label">Pagos del mes</p>
     </div>
-    <div class="card" style="margin-top:16px; display:flex; justify-content:space-between; align-items:center;">
-      <div>
-        <div style="font-size:11px;color:var(--terra);text-transform:uppercase;letter-spacing:0.8px;">Pagadas este mes</div>
+
+    <!-- Cuota + contador -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:16px 16px 0;">
+      <div class="card" style="margin:0;">
+        <div style="font-size:11px;color:var(--terra);text-transform:uppercase;letter-spacing:0.8px;">Pagadas</div>
         <div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--dark);" id="alumnas-pagadas-count">— / —</div>
       </div>
-      <button class="radio-chip" style="border-color:var(--mid);color:var(--mid);" onclick="openAddAlumna()">+ Agregar</button>
+      <div class="card" style="margin:0;cursor:pointer;" onclick="editarCuota()">
+        <div style="font-size:11px;color:var(--terra);text-transform:uppercase;letter-spacing:0.8px;">Cuota del mes</div>
+        <div style="font-family:'Cormorant Garamond',serif;font-size:28px;color:var(--dark);" id="cuota-display">$—</div>
+        <div style="font-size:10px;color:var(--terra);margin-top:2px;">Tocá para editar</div>
+      </div>
     </div>
-    <div id="alumnas-list"></div>
+
+    <!-- Editar cuota (oculto) -->
+    <div id="cuota-edit-wrap" style="display:none;padding:0 16px;margin-top:10px;">
+      <div style="display:flex;gap:8px;">
+        <input class="form-input" type="number" id="cuota-input" placeholder="$0" style="flex:1;">
+        <button class="btn-primary" style="margin:0;width:auto;padding:12px 16px;" onclick="guardarCuota()">Guardar</button>
+      </div>
+    </div>
+
+    <!-- Agregar alumna -->
+    <div style="padding:12px 16px 0;display:flex;justify-content:flex-end;">
+      <button class="radio-chip" style="border-color:var(--mid);color:var(--mid);" onclick="openAddAlumna()">+ Agregar alumna</button>
+    </div>
+
+    <div id="alumnas-list" style="padding-bottom:8px;"></div>
   </section>
 
   <!-- ══ BALANCE ══ -->
@@ -802,13 +822,16 @@
 
 <script>
 // ═══ CONFIG ═══
-const API_URL = 'https://script.google.com/macros/s/AKfycbyUNimCc0pS3DhVpz3URYt-tTz98I1d7nINNBa7S8Q3BqBAe9OfPAH8joUe3FI_2YjO/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzC23j03ZMF0sXFZn_h_Q3B8kRxQq0W2YzTicnp3ILpJOHVKFPUttqgd-6uLW0MQw8D/exec';
 
 // ═══ STATE ═══
 let productos = [];
 let movimientos = [];
 let alumnas = [];
+let precioCuota = 0;
 let currentFilter = 'todos';
+const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const mesActual = MESES[new Date().getMonth()];
 
 // ═══ API ═══
 async function apiGet(action) {
@@ -884,16 +907,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   hideLoading();
 
-  // Alumnas — por ahora local hasta tener hoja dedicada
-  alumnas = [
-    {nombre:"Agus",taller:"Macramé",pagada:true},
-    {nombre:"Majo",taller:"Macramé",pagada:true},
-    {nombre:"Caro",taller:"Macramé",pagada:false},
-    {nombre:"Sofi",taller:"Macramé avanzado",pagada:true},
-    {nombre:"Flor",taller:"Macramé",pagada:false},
-    {nombre:"Juli",taller:"Macramé avanzado",pagada:true},
-  ];
-  renderAlumnas();
+  // Cargar alumnas desde Sheets
+  try {
+    const res = await apiGet('getAlumnas');
+    precioCuota = parseFloat(res.precioCuota) || 0;
+    alumnas = parseAlumnas(res.data);
+    renderAlumnas();
+  } catch(e) {
+    showToast('Error cargando alumnas');
+  }
 });
 
 function setHeaderDate() {
@@ -1144,37 +1166,88 @@ async function registrarWorkshop() {
 }
 
 // ═══ ALUMNAS ═══
+function parseAlumnas(data) {
+  if (!data || data.length < 2) return [];
+  const headers = data[0];
+  const mesPago = 'Pagó ' + mesActual;
+  const colPago = headers.indexOf(mesPago);
+  return data.slice(1).filter(r => r[0]).map(r => ({
+    nombre: r[0],
+    clase: r[1] || '',
+    pagada: colPago >= 0 ? r[colPago] === true : false
+  }));
+}
+
 function renderAlumnas() {
   const list = document.getElementById('alumnas-list');
   const pagadas = alumnas.filter(a => a.pagada).length;
   document.getElementById('alumnas-pagadas-count').textContent = `${pagadas} / ${alumnas.length}`;
-  list.innerHTML = alumnas.map((a,i) => `
+  document.getElementById('alumnas-mes-label').textContent = `Pagos de ${mesActual}`;
+  document.getElementById('cuota-display').textContent = fmt(precioCuota);
+
+  // Ordenar: pendientes primero
+  const sorted = [...alumnas].sort((a,b) => a.pagada - b.pagada);
+
+  list.innerHTML = sorted.map((a) => {
+    const idx = alumnas.findIndex(x => x.nombre === a.nombre);
+    return `
     <div class="alumna-item">
       <div class="alumna-avatar">${a.nombre[0]}</div>
       <div class="alumna-info">
         <div class="alumna-nombre">${a.nombre}</div>
-        <div class="alumna-taller">${a.taller}</div>
+        <div class="alumna-taller">${a.clase}</div>
       </div>
-      <span class="pago-badge ${a.pagada ? 'pagada' : 'pendiente'}" onclick="togglePago(${i})" style="cursor:pointer">
+      <span class="pago-badge ${a.pagada ? 'pagada' : 'pendiente'}" onclick="togglePago(${idx})" style="cursor:pointer">
         ${a.pagada ? '✓ Pagó' : 'Pendiente'}
       </span>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
-function togglePago(i) {
-  alumnas[i].pagada = !alumnas[i].pagada;
+async function togglePago(i) {
+  const alumna = alumnas[i];
+  const nuevoPago = !alumna.pagada;
+  alumnas[i].pagada = nuevoPago;
   renderAlumnas();
-  showToast(alumnas[i].pagada ? '✓ Pago registrado' : 'Pago removido');
+  try {
+    await apiPost({ action:'togglePago', nombre: alumna.nombre, mes: mesActual, valor: String(nuevoPago) });
+    showToast(nuevoPago ? `✓ Pago de ${alumna.nombre} registrado en Balance` : 'Pago removido');
+  } catch(e) { 
+    alumnas[i].pagada = !nuevoPago; 
+    renderAlumnas();
+    showToast('Error al guardar'); 
+  }
 }
 
-function openAddAlumna() {
+async function openAddAlumna() {
   const nombre = prompt('Nombre de la alumna:');
-  if (nombre) {
-    alumnas.push({nombre, taller:'Macramé', pagada:false});
+  if (!nombre) return;
+  const clase = prompt('Clase (ej: Martes tarde):');
+  if (!clase) return;
+  try {
+    await apiPost({ action:'addAlumna', nombre, clase });
+    alumnas.push({ nombre, clase, pagada: false });
     renderAlumnas();
     showToast('✓ Alumna agregada');
-  }
+  } catch(e) { showToast('Error al guardar'); }
+}
+
+function editarCuota() {
+  const wrap = document.getElementById('cuota-edit-wrap');
+  wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none';
+  if (wrap.style.display === 'block') document.getElementById('cuota-input').value = precioCuota;
+}
+
+async function guardarCuota() {
+  const nuevo = parseFloat(document.getElementById('cuota-input').value);
+  if (!nuevo) { showToast('Ingresá un valor válido'); return; }
+  try {
+    await apiPost({ action:'updateCuota', precio: nuevo });
+    precioCuota = nuevo;
+    document.getElementById('cuota-display').textContent = fmt(nuevo);
+    document.getElementById('cuota-edit-wrap').style.display = 'none';
+    showToast('✓ Cuota actualizada');
+  } catch(e) { showToast('Error al guardar'); }
 }
 
 // ═══ BALANCE ═══
