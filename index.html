@@ -543,10 +543,14 @@
         <input class="form-input" type="date" id="venta-fecha">
       </div>
       <div class="form-group">
-        <label class="form-label">Producto</label>
-        <select class="form-select" id="venta-producto" onchange="calcularPrecioVenta()">
-          <option value="">Seleccionar...</option>
-        </select>
+        <label class="form-label">Productos</label>
+        <div id="productos-seleccionados" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;"></div>
+        <div style="display:flex;gap:8px;">
+          <select class="form-select" id="venta-producto-add" style="flex:1;">
+            <option value="">Agregar producto...</option>
+          </select>
+          <button class="radio-chip" style="border-color:var(--mid);color:var(--mid);white-space:nowrap;" onclick="agregarProducto()">+ Agregar</button>
+        </div>
       </div>
       <div class="form-group">
         <label class="form-label">Vía de venta</label>
@@ -587,9 +591,8 @@
       </div>
     </div>
     <div class="precio-preview" id="precio-preview">
-      <div class="pp-label">Precio de venta</div>
+      <div class="pp-label">Total de la venta</div>
       <div class="pp-amount" id="pp-amount">$0</div>
-      <div class="pp-ganancia" id="pp-ganancia">Ganancia: $0</div>
     </div>
     <button class="btn-primary" onclick="registrarVenta()">Registrar venta</button>
   </section>
@@ -752,16 +755,17 @@
         <div class="price-card-amount" id="modal-taller">—</div>
       </div>
     </div>
-    <div class="costo-row">
-      <span class="costo-label">Costo</span>
-      <span class="costo-value" id="modal-costo">—</span>
+    <div id="costo-edit-wrap" style="display:none; margin-bottom:8px;">
+      <div class="form-label" style="margin-bottom:6px;">Nuevo costo ($)</div>
+      <div style="display:flex;gap:8px;">
+        <input class="form-input" type="number" id="modal-costo-input" placeholder="$0" style="flex:1;">
+        <button class="btn-close" style="width:auto;padding:12px 16px;margin:0;" onclick="guardarCosto()">Guardar</button>
+      </div>
     </div>
-    <div style="height:8px"></div>
-    <div class="ganancia-row">
-      <span class="ganancia-label">Ganancia (efectivo)</span>
-      <span class="ganancia-value" id="modal-ganancia">—</span>
+    <div style="display:flex;gap:8px;margin-bottom:4px;">
+      <button class="btn-close" style="background:var(--nude);color:var(--dark);flex:1;" onclick="toggleCostoEdit()">✏️ Cambiar costo</button>
+      <button class="btn-close" style="flex:1;" onclick="closeModal()">Cerrar</button>
     </div>
-    <button class="btn-close" onclick="closeModal()">Cerrar</button>
   </div>
 </div>
 
@@ -798,7 +802,7 @@
 
 <script>
 // ═══ CONFIG ═══
-const API_URL = 'https://script.google.com/macros/s/AKfycbwfdJPCTukvJs5C5ufAcLMx--2rXqfGZl_W2WNieP-FhVrfNI8DEtOHhZh8sV-rCQte/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyUNimCc0pS3DhVpz3URYt-tTz98I1d7nINNBa7S8Q3BqBAe9OfPAH8joUe3FI_2YjO/exec';
 
 // ═══ STATE ═══
 let productos = [];
@@ -923,13 +927,15 @@ function filterProducts() {
 function renderProductList() {
   const q = document.getElementById('search-productos').value.toLowerCase();
   const list = document.getElementById('product-list');
-  const filtered = productos.filter(p => {
+  // Salteamos los primeros 4 (hilos sueltos usados para cálculos)
+  const visibles = productos.slice(4);
+  const filtered = visibles.filter(p => {
     const matchFilter = currentFilter === 'todos' || p.tipo === currentFilter.slice(0,-1);
     const matchSearch = p.nombre.toLowerCase().includes(q);
     return matchFilter && matchSearch;
   });
 
-  list.innerHTML = filtered.map((p,i) => `
+  list.innerHTML = filtered.map((p) => `
     <div class="product-item" onclick="openModal(${productos.indexOf(p)})">
       <div class="product-dot ${p.tipo === 'combo' ? 'combo' : ''}"></div>
       <div class="product-info">
@@ -944,16 +950,41 @@ function renderProductList() {
   `).join('');
 }
 
+let currentModalIdx = null;
+
 function openModal(idx) {
   const p = productos[idx];
+  currentModalIdx = idx;
   document.getElementById('modal-nombre').textContent = p.nombre;
   document.getElementById('modal-medida').textContent = p.medidas || '';
   document.getElementById('modal-efectivo').textContent = fmt(p.efectivo);
   document.getElementById('modal-tarjeta').textContent = fmt(p.tarjeta);
   document.getElementById('modal-taller').textContent = fmt(p.taller);
-  document.getElementById('modal-costo').textContent = fmt(p.costo);
-  document.getElementById('modal-ganancia').textContent = fmt(p.efectivo - p.costo);
+  document.getElementById('costo-edit-wrap').style.display = 'none';
+  document.getElementById('modal-costo-input').value = '';
   document.getElementById('product-modal').classList.add('open');
+}
+
+function toggleCostoEdit() {
+  const wrap = document.getElementById('costo-edit-wrap');
+  wrap.style.display = wrap.style.display === 'none' ? 'block' : 'none';
+  if (wrap.style.display === 'block') {
+    document.getElementById('modal-costo-input').value = productos[currentModalIdx].costo;
+    document.getElementById('modal-costo-input').focus();
+  }
+}
+
+async function guardarCosto() {
+  const nuevoCosto = parseFloat(document.getElementById('modal-costo-input').value);
+  if (!nuevoCosto) { showToast('Ingresá un costo válido'); return; }
+  const p = productos[currentModalIdx];
+  showToast('⏳ Guardando...');
+  try {
+    await apiPost({ action: 'updateCosto', producto: p.nombre, costo: nuevoCosto });
+    productos[currentModalIdx].costo = nuevoCosto;
+    showToast('✓ Costo actualizado en Sheets');
+    document.getElementById('costo-edit-wrap').style.display = 'none';
+  } catch(e) { showToast('Error al guardar'); }
 }
 
 function closeModal() {
@@ -961,14 +992,42 @@ function closeModal() {
 }
 
 // ═══ VENTAS ═══
+let ventaItems = []; // lista de productos agregados a la venta
+
 function populateVentaSelect() {
-  const sel = document.getElementById('venta-producto');
-  productos.forEach(p => {
+  const sel = document.getElementById('venta-producto-add');
+  productos.slice(4).forEach(p => {
     const opt = document.createElement('option');
     opt.value = p.nombre;
     opt.textContent = p.nombre;
     sel.appendChild(opt);
   });
+}
+
+function agregarProducto() {
+  const sel = document.getElementById('venta-producto-add');
+  const nombre = sel.value;
+  if (!nombre) return;
+  ventaItems.push(nombre);
+  sel.value = '';
+  renderVentaItems();
+  calcularPrecioVenta();
+}
+
+function quitarProducto(i) {
+  ventaItems.splice(i, 1);
+  renderVentaItems();
+  calcularPrecioVenta();
+}
+
+function renderVentaItems() {
+  const wrap = document.getElementById('productos-seleccionados');
+  wrap.innerHTML = ventaItems.map((nombre, i) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;background:var(--white);border-radius:10px;padding:10px 14px;border:1.5px solid var(--nude);">
+      <span style="font-size:13px;color:var(--dark);">${nombre}</span>
+      <button onclick="quitarProducto(${i})" style="background:none;border:none;color:var(--terra);font-size:16px;cursor:pointer;">✕</button>
+    </div>
+  `).join('');
 }
 
 function initVentaFecha() {
@@ -989,36 +1048,51 @@ function getPagoSelected() {
 }
 
 function calcularPrecioVenta() {
-  const nombre = document.getElementById('venta-producto').value;
-  if (!nombre) { document.getElementById('precio-preview').classList.remove('show'); return; }
-  const p = productos.find(x => x.nombre === nombre);
-  if (!p) return;
+  if (ventaItems.length === 0) { document.getElementById('precio-preview').classList.remove('show'); return; }
   const pago = getPagoSelected();
-  let precio = p.efectivo;
-  let ganancia = p.efectivo - p.costo;
-  if (pago.includes('Tarjeta')) { precio = p.tarjeta; ganancia = p.tarjeta - p.costo; }
-  else if (pago.includes('Taller')) { precio = p.taller; ganancia = p.taller - p.costo; }
-  document.getElementById('pp-amount').textContent = fmt(precio);
-  document.getElementById('pp-ganancia').textContent = `Ganancia: ${fmt(ganancia)}`;
+  let total = 0;
+  ventaItems.forEach(nombre => {
+    const p = productos.find(x => x.nombre === nombre);
+    if (!p) return;
+    if (pago.includes('Tarjeta')) total += p.tarjeta;
+    else if (pago.includes('Taller')) total += p.taller;
+    else total += p.efectivo;
+  });
+  document.getElementById('pp-amount').textContent = fmt(total);
   document.getElementById('precio-preview').classList.add('show');
 }
 
 async function registrarVenta() {
-  const prod = document.getElementById('venta-producto').value;
-  if (!prod) { showToast('Seleccioná un producto'); return; }
-  const p = productos.find(x => x.nombre === prod);
+  if (ventaItems.length === 0) { showToast('Agregá al menos un producto'); return; }
   const pago = getPagoSelected();
   const via = document.querySelector('#venta-via .radio-chip.selected')?.textContent.trim() || 'Presencial';
-  let precio = p.efectivo, ganancia = p.efectivo - p.costo;
-  if (pago.includes('Tarjeta')) { precio = p.tarjeta; ganancia = p.tarjeta - p.costo; }
-  else if (pago.includes('Taller')) { precio = p.taller; ganancia = p.taller - p.costo; }
+  const fecha = document.getElementById('venta-fecha').value;
+  const estadoPago = document.getElementById('venta-estado-pago').value;
+  const estadoEnvio = document.getElementById('venta-estado-envio').value;
+  const notas = document.getElementById('venta-notas').value;
+
+  // Calcular total y armar descripción
+  let totalPrecio = 0;
+  let totalGanancia = 0;
+  ventaItems.forEach(nombre => {
+    const p = productos.find(x => x.nombre === nombre);
+    if (!p) return;
+    let precio = p.efectivo, ganancia = p.efectivo - p.costo;
+    if (pago.includes('Tarjeta')) { precio = p.tarjeta; ganancia = p.tarjeta - p.costo; }
+    else if (pago.includes('Taller')) { precio = p.taller; ganancia = p.taller - p.costo; }
+    totalPrecio += precio;
+    totalGanancia += ganancia;
+  });
+
+  const descripcion = ventaItems.join(', ');
   showToast('⏳ Guardando...');
   try {
-    await apiPost({ action:'addVenta', fecha: document.getElementById('venta-fecha').value, via, producto: prod, estadoPago: document.getElementById('venta-estado-pago').value, estadoEnvio: document.getElementById('venta-estado-envio').value, precio, ganancia, notas: document.getElementById('venta-notas').value });
-    movimientos.unshift({ fecha: document.getElementById('venta-fecha').value, tipo:'Ingreso', categoria:'Venta', desc: prod, monto: precio });
+    await apiPost({ action:'addVenta', fecha, via, producto: descripcion, estadoPago, estadoEnvio, precio: totalPrecio, ganancia: totalGanancia, notas });
+    movimientos.unshift({ fecha, tipo:'Ingreso', categoria:'Venta', desc: descripcion, monto: totalPrecio });
     renderBalance();
     showToast('✓ Venta guardada en Sheets');
-    document.getElementById('venta-producto').value = '';
+    ventaItems = [];
+    renderVentaItems();
     document.getElementById('venta-notas').value = '';
     document.getElementById('precio-preview').classList.remove('show');
   } catch(e) { showToast('Error al guardar'); }
