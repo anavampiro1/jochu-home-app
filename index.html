@@ -692,8 +692,13 @@
       </div>
     </div>
 
+    <!-- Filtro por clase -->
+    <div class="filter-row" id="alumnas-filter-row" style="padding-top:12px;">
+      <button class="filter-chip active" onclick="setClaseFilter('todas', this)">Todas</button>
+    </div>
+
     <!-- Agregar alumna -->
-    <div style="padding:12px 16px 0;display:flex;justify-content:flex-end;">
+    <div style="padding:10px 16px 0;display:flex;justify-content:flex-end;">
       <button class="radio-chip" style="border-color:var(--mid);color:var(--mid);" onclick="openAddAlumna()">+ Agregar alumna</button>
     </div>
 
@@ -847,6 +852,55 @@
   </div>
 </div>
 
+<!-- ALUMNA DETAIL MODAL -->
+<div class="modal-overlay" id="alumna-modal" onclick="if(event.target===this)closeAlumnaModal()">
+  <div class="modal-sheet" style="max-height:85vh;overflow-y:auto;padding-bottom:32px;">
+    <div class="modal-handle"></div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+      <div>
+        <div class="modal-title" id="alumna-modal-nombre"></div>
+        <div style="font-size:12px;color:var(--terra);margin-top:2px;" id="alumna-modal-clase"></div>
+      </div>
+      <button onclick="closeAlumnaModal()" style="background:none;border:none;color:var(--terra);font-size:22px;cursor:pointer;padding:4px;margin-top:-4px;">&#x2715;</button>
+    </div>
+    <div style="background:var(--dark);border-radius:16px;padding:16px;margin:16px 0 16px;">
+      <div style="font-size:10px;color:var(--terra);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;">Cuota &#x2014; <span id="alumna-modal-mes"></span></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <input class="form-input" type="number" id="alumna-cuota-input" style="flex:1;background:rgba(255,255,255,0.08);border-color:rgba(242,217,206,0.2);color:var(--nude);" placeholder="$0">
+        <span id="alumna-cuota-badge" style="padding:5px 12px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap;"></span>
+      </div>
+      <button id="alumna-cuota-btn" onclick="pagarCuotaAlumna()" style="width:100%;border:none;border-radius:12px;padding:11px;font-family:DM Sans,sans-serif;font-size:13px;cursor:pointer;"></button>
+    </div>
+    <div style="font-size:10px;color:var(--terra);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;">Materiales del mes</div>
+    <div id="alumna-materiales-list" style="margin-bottom:12px;display:flex;flex-direction:column;gap:8px;"></div>
+    <button onclick="openAddMaterialModal()" style="width:100%;background:var(--white);border:1.5px dashed var(--nude);border-radius:12px;padding:12px;font-family:DM Sans,sans-serif;font-size:13px;color:var(--mid);cursor:pointer;">+ Agregar material</button>
+  </div>
+</div>
+
+<!-- ADD MATERIAL MODAL -->
+<div class="gasto-form-overlay" id="add-material-modal" onclick="if(event.target===this)closeAddMaterialModal()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Agregar material</div>
+    <div style="height:12px"></div>
+    <div class="form-group">
+      <label class="form-label">Producto</label>
+      <div style="position:relative;">
+        <input class="form-input" type="text" id="mat-producto-search" placeholder="Buscar producto..." autocomplete="off" oninput="filtrarProductosMat()" onfocus="filtrarProductosMat()">
+        <div id="mat-sugerencias" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--white);border:1.5px solid var(--mid);border-radius:12px;z-index:500;max-height:180px;overflow-y:auto;box-shadow:0 4px 16px rgba(38,15,7,0.12);margin-top:4px;"></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Monto ($)</label>
+      <input class="form-input" type="number" id="mat-monto" placeholder="$0">
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-close" style="background:var(--nude);color:var(--dark);flex:1;" onclick="closeAddMaterialModal()">Cancelar</button>
+      <button class="btn-close" style="flex:1;" onclick="guardarMaterial()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ADD PRODUCTO MODAL -->
 <div class="gasto-form-overlay" id="add-producto-modal" onclick="if(event.target===this)closeAddProductoModal()">
   <div class="modal-sheet">
@@ -889,7 +943,7 @@
 
 <script>
 // ═══ CONFIG ═══
-const API_URL = 'https://script.google.com/macros/s/AKfycbx32M5Y-OLU8WWGt0eO-2cl1KEDgmcdDob9ixhQMi3y135fqQyiVfi3ZU6FrfWwgvcQ/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwUnXlrlXuLuFrDTeW6AVArPK6QMJ8ZTiKSWysd8rJL74R9LNYuz23zigSc9sybvUBl/exec';
 
 // ═══ STATE ═══
 let productos = [];
@@ -979,6 +1033,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const res = await apiGet('getAlumnas');
     precioCuota = parseFloat(res.precioCuota) || 0;
     alumnas = parseAlumnas(res.data);
+    buildClaseFilters();
     renderAlumnas();
   } catch(e) {
     showToast('Error cargando alumnas');
@@ -1262,6 +1317,10 @@ async function registrarWorkshop() {
 }
 
 // ═══ ALUMNAS ═══
+let claseFilterActual = 'todas';
+let materialesAlumna = []; // materiales del mes de la alumna abierta
+let alumnaModalIdx = null;
+
 function parseAlumnas(data) {
   if (!data || data.length < 2) return [];
   const headers = data[0];
@@ -1274,6 +1333,26 @@ function parseAlumnas(data) {
   }));
 }
 
+function buildClaseFilters() {
+  const clases = [...new Set(alumnas.map(a => a.clase).filter(Boolean))].sort();
+  const row = document.getElementById('alumnas-filter-row');
+  row.innerHTML = `<button class="filter-chip active" onclick="setClaseFilter('todas', this)">Todas</button>`;
+  clases.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'filter-chip';
+    btn.textContent = c;
+    btn.onclick = function(){ setClaseFilter(c, this); };
+    row.appendChild(btn);
+  });
+}
+
+function setClaseFilter(clase, el) {
+  claseFilterActual = clase;
+  document.querySelectorAll('#alumnas-filter-row .filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderAlumnas();
+}
+
 function renderAlumnas() {
   const list = document.getElementById('alumnas-list');
   const pagadas = alumnas.filter(a => a.pagada).length;
@@ -1281,23 +1360,170 @@ function renderAlumnas() {
   document.getElementById('alumnas-mes-label').textContent = `Pagos de ${mesActual}`;
   document.getElementById('cuota-display').textContent = fmt(precioCuota);
 
-  // Ordenar: pendientes primero
-  const sorted = [...alumnas].sort((a,b) => a.pagada - b.pagada);
+  let filtradas = claseFilterActual === 'todas' ? alumnas : alumnas.filter(a => a.clase === claseFilterActual);
+  const sorted = [...filtradas].sort((a,b) => a.pagada - b.pagada);
 
   list.innerHTML = sorted.map((a) => {
     const idx = alumnas.findIndex(x => x.nombre === a.nombre);
     return `
-    <div class="alumna-item">
+    <div class="alumna-item" style="cursor:pointer;" onclick="openAlumnaModal(${idx})">
       <div class="alumna-avatar">${a.nombre[0]}</div>
       <div class="alumna-info">
         <div class="alumna-nombre">${a.nombre}</div>
         <div class="alumna-taller">${a.clase}</div>
       </div>
-      <span class="pago-badge ${a.pagada ? 'pagada' : 'pendiente'}" onclick="togglePago(${idx})" style="cursor:pointer">
+      <span class="pago-badge ${a.pagada ? 'pagada' : 'pendiente'}">
         ${a.pagada ? '✓ Pagó' : 'Pendiente'}
       </span>
     </div>`;
   }).join('');
+}
+
+// ── MODAL ALUMNA ──
+async function openAlumnaModal(idx) {
+  alumnaModalIdx = idx;
+  const a = alumnas[idx];
+  document.getElementById('alumna-modal-nombre').textContent = a.nombre;
+  document.getElementById('alumna-modal-clase').textContent = a.clase;
+  document.getElementById('alumna-modal-mes').textContent = mesActual;
+
+  // Cuota
+  const cuotaInput = document.getElementById('alumna-cuota-input');
+  cuotaInput.value = precioCuota;
+  actualizarBotonesCuota(a.pagada);
+
+  // Materiales: cargar desde Sheets
+  materialesAlumna = [];
+  renderMaterialesModal();
+  document.getElementById('alumna-modal').classList.add('open');
+
+  try {
+    const res = await apiPost({ action: 'getMateriales', alumna: a.nombre, mes: mesActual });
+    materialesAlumna = res.data || [];
+    renderMaterialesModal();
+  } catch(e) { showToast('Error cargando materiales'); }
+}
+
+function actualizarBotonesCuota(pagada) {
+  const badge = document.getElementById('alumna-cuota-badge');
+  const btn = document.getElementById('alumna-cuota-btn');
+  if (pagada) {
+    badge.textContent = '✓ Pagó';
+    badge.style.cssText = 'padding:5px 12px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap;background:rgba(122,158,126,0.2);color:var(--success);';
+    btn.textContent = 'Marcar como pendiente';
+    btn.style.cssText = 'width:100%;border:none;border-radius:12px;padding:11px;font-family:DM Sans,sans-serif;font-size:13px;cursor:pointer;background:rgba(255,255,255,0.1);color:var(--terra);';
+  } else {
+    badge.textContent = 'Pendiente';
+    badge.style.cssText = 'padding:5px 12px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap;background:rgba(192,97,74,0.15);color:var(--danger);';
+    btn.textContent = 'Registrar pago de cuota';
+    btn.style.cssText = 'width:100%;border:none;border-radius:12px;padding:11px;font-family:DM Sans,sans-serif;font-size:13px;cursor:pointer;background:var(--mid);color:var(--nude);';
+  }
+}
+
+function renderMaterialesModal() {
+  const list = document.getElementById('alumna-materiales-list');
+  if (materialesAlumna.length === 0) {
+    list.innerHTML = `<div style="font-size:13px;color:var(--terra);text-align:center;padding:12px 0;">Sin materiales este mes</div>`;
+    return;
+  }
+  list.innerHTML = materialesAlumna.map((m, i) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;background:var(--white);border-radius:12px;padding:12px 14px;gap:10px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${m.producto}</div>
+        <div style="font-size:11px;color:var(--terra);margin-top:2px;">${fmt(m.monto)}</div>
+      </div>
+      <span onclick="togglePagoMaterial(${i})" style="cursor:pointer;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap;${m.pagado ? 'background:rgba(122,158,126,0.15);color:var(--success);' : 'background:rgba(192,97,74,0.12);color:var(--danger);'}">
+        ${m.pagado ? '✓ Pagó' : 'Pendiente'}
+      </span>
+    </div>
+  `).join('');
+}
+
+async function pagarCuotaAlumna() {
+  const a = alumnas[alumnaModalIdx];
+  const nuevoPago = !a.pagada;
+  const monto = parseFloat(document.getElementById('alumna-cuota-input').value) || precioCuota;
+  alumnas[alumnaModalIdx].pagada = nuevoPago;
+  actualizarBotonesCuota(nuevoPago);
+  renderAlumnas();
+  try {
+    await apiPost({ action:'togglePago', nombre: a.nombre, mes: mesActual, valor: String(nuevoPago), monto });
+    showToast(nuevoPago ? `✓ Cuota de ${a.nombre} registrada` : 'Pago removido');
+  } catch(e) {
+    alumnas[alumnaModalIdx].pagada = !nuevoPago;
+    actualizarBotonesCuota(!nuevoPago);
+    renderAlumnas();
+    showToast('Error al guardar');
+  }
+}
+
+async function togglePagoMaterial(i) {
+  const m = materialesAlumna[i];
+  const nuevoPago = !m.pagado;
+  materialesAlumna[i].pagado = nuevoPago;
+  renderMaterialesModal();
+  try {
+    await apiPost({ action: 'togglePagoMaterial', rowId: m.rowId, pagado: String(nuevoPago), alumna: alumnas[alumnaModalIdx].nombre, producto: m.producto, monto: m.monto, mes: mesActual });
+    showToast(nuevoPago ? `✓ Pago registrado en Balance` : 'Pago removido');
+  } catch(e) {
+    materialesAlumna[i].pagado = !nuevoPago;
+    renderMaterialesModal();
+    showToast('Error al guardar');
+  }
+}
+
+function closeAlumnaModal() {
+  document.getElementById('alumna-modal').classList.remove('open');
+  alumnaModalIdx = null;
+}
+
+// ── AGREGAR MATERIAL ──
+function openAddMaterialModal() {
+  document.getElementById('mat-producto-search').value = '';
+  document.getElementById('mat-monto').value = '';
+  document.getElementById('mat-sugerencias').style.display = 'none';
+  document.getElementById('add-material-modal').classList.add('open');
+}
+function closeAddMaterialModal() {
+  document.getElementById('add-material-modal').classList.remove('open');
+}
+
+function filtrarProductosMat() {
+  const q = document.getElementById('mat-producto-search').value.toLowerCase().trim();
+  const sugs = document.getElementById('mat-sugerencias');
+  const lista = q ? productos.slice(4).filter(p => p.nombre.toLowerCase().includes(q)) : productos.slice(4);
+  if (lista.length === 0) { sugs.style.display = 'none'; return; }
+  sugs.style.display = 'block';
+  sugs.innerHTML = lista.slice(0,8).map(p => `
+    <div onclick="seleccionarProductoMat('${p.nombre.replace(/'/g,"\\'")}', ${p.taller});event.stopPropagation()"
+      style="padding:11px 14px;font-size:13px;color:var(--dark);border-bottom:1px solid rgba(242,217,206,0.4);cursor:pointer;"
+      onmousedown="event.preventDefault()">
+      ${p.nombre} <span style="color:var(--terra);font-size:11px;">Taller: ${fmt(p.taller)}</span>
+    </div>
+  `).join('');
+}
+
+function seleccionarProductoMat(nombre, precioTaller) {
+  document.getElementById('mat-producto-search').value = nombre;
+  document.getElementById('mat-monto').value = precioTaller || '';
+  document.getElementById('mat-sugerencias').style.display = 'none';
+}
+
+async function guardarMaterial() {
+  const producto = document.getElementById('mat-producto-search').value.trim();
+  const monto = parseFloat(document.getElementById('mat-monto').value) || 0;
+  if (!producto) { showToast('Seleccioná un producto'); return; }
+  if (!monto) { showToast('Ingresá un monto'); return; }
+  const a = alumnas[alumnaModalIdx];
+  const fecha = new Date().toISOString().split('T')[0];
+  showToast('⏳ Guardando...');
+  try {
+    const res = await apiPost({ action: 'addMaterial', alumna: a.nombre, clase: a.clase, mes: mesActual, producto, monto, fecha });
+    materialesAlumna.push({ producto, monto, pagado: false, rowId: res.rowId });
+    renderMaterialesModal();
+    closeAddMaterialModal();
+    showToast('✓ Material agregado');
+  } catch(e) { showToast('Error al guardar'); }
 }
 
 async function togglePago(i) {
@@ -1308,10 +1534,10 @@ async function togglePago(i) {
   try {
     await apiPost({ action:'togglePago', nombre: alumna.nombre, mes: mesActual, valor: String(nuevoPago) });
     showToast(nuevoPago ? `✓ Pago de ${alumna.nombre} registrado en Balance` : 'Pago removido');
-  } catch(e) { 
-    alumnas[i].pagada = !nuevoPago; 
+  } catch(e) {
+    alumnas[i].pagada = !nuevoPago;
     renderAlumnas();
-    showToast('Error al guardar'); 
+    showToast('Error al guardar');
   }
 }
 
@@ -1323,6 +1549,7 @@ async function openAddAlumna() {
   try {
     await apiPost({ action:'addAlumna', nombre, clase });
     alumnas.push({ nombre, clase, pagada: false });
+    buildClaseFilters();
     renderAlumnas();
     showToast('✓ Alumna agregada');
   } catch(e) { showToast('Error al guardar'); }
@@ -1528,4 +1755,4 @@ function showToast(msg) {
 }
 </script>
 </body>
-</html> 
+</html>
