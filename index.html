@@ -943,7 +943,7 @@
 
 <script>
 // ═══ CONFIG ═══
-const API_URL = 'https://script.google.com/macros/s/AKfycbwUnXlrlXuLuFrDTeW6AVArPK6QMJ8ZTiKSWysd8rJL74R9LNYuz23zigSc9sybvUBl/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycby15jBYljtL_NGQuNw2JyHEX3FFcfkLhVM1KRgR2HugXqUg5-Hng77KURAfEJL2mN83/exec';
 
 // ═══ STATE ═══
 let productos = [];
@@ -1329,12 +1329,20 @@ function parseAlumnas(data) {
   return data.slice(1).filter(r => r[0]).map(r => ({
     nombre: r[0],
     clase: r[1] || '',
-    pagada: colPago >= 0 ? r[colPago] === true : false
+    pagada: colPago >= 0 ? (r[colPago] === true || r[colPago] === "TRUE" || r[colPago] === "VERDADERO" || r[colPago] === true) : false
   }));
 }
 
+function normClase(c) { return (c || '').trim().toLowerCase().replace(/\s+/g,' '); }
+
 function buildClaseFilters() {
-  const clases = [...new Set(alumnas.map(a => a.clase).filter(Boolean))].sort();
+  const seen = new Set();
+  const clases = [];
+  alumnas.forEach(a => {
+    const n = normClase(a.clase);
+    if (n && !seen.has(n)) { seen.add(n); clases.push(a.clase.trim()); }
+  });
+  clases.sort();
   const row = document.getElementById('alumnas-filter-row');
   row.innerHTML = `<button class="filter-chip active" onclick="setClaseFilter('todas', this)">Todas</button>`;
   clases.forEach(c => {
@@ -1360,7 +1368,7 @@ function renderAlumnas() {
   document.getElementById('alumnas-mes-label').textContent = `Pagos de ${mesActual}`;
   document.getElementById('cuota-display').textContent = fmt(precioCuota);
 
-  let filtradas = claseFilterActual === 'todas' ? alumnas : alumnas.filter(a => a.clase === claseFilterActual);
+  let filtradas = claseFilterActual === 'todas' ? alumnas : alumnas.filter(a => normClase(a.clase) === normClase(claseFilterActual));
   const sorted = [...filtradas].sort((a,b) => a.pagada - b.pagada);
 
   list.innerHTML = sorted.map((a) => {
@@ -1432,9 +1440,12 @@ function renderMaterialesModal() {
         <div style="font-size:13px;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${m.producto}</div>
         <div style="font-size:11px;color:var(--terra);margin-top:2px;">${fmt(m.monto)}</div>
       </div>
-      <span onclick="togglePagoMaterial(${i})" style="cursor:pointer;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap;${m.pagado ? 'background:rgba(122,158,126,0.15);color:var(--success);' : 'background:rgba(192,97,74,0.12);color:var(--danger);'}">
-        ${m.pagado ? '✓ Pagó' : 'Pendiente'}
-      </span>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span onclick="togglePagoMaterial(${i})" style="cursor:pointer;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap;${m.pagado ? 'background:rgba(122,158,126,0.15);color:var(--success);' : 'background:rgba(192,97,74,0.12);color:var(--danger);'}">
+          ${m.pagado ? '✓ Pagó' : 'Pendiente'}
+        </span>
+        <button onclick="eliminarMaterial(${i})" style="background:none;border:none;color:var(--terra);font-size:16px;cursor:pointer;padding:2px;line-height:1;" title="Eliminar">🗑</button>
+      </div>
     </div>
   `).join('');
 }
@@ -1526,6 +1537,18 @@ async function guardarMaterial() {
   } catch(e) { showToast('Error al guardar'); }
 }
 
+async function eliminarMaterial(i) {
+  const m = materialesAlumna[i];
+  if (!confirm(`¿Eliminar "${m.producto}" (${fmt(m.monto)})?`)) return;
+  showToast('⏳ Eliminando...');
+  try {
+    await apiPost({ action: 'deleteMaterial', rowId: m.rowId });
+    materialesAlumna.splice(i, 1);
+    renderMaterialesModal();
+    showToast('✓ Material eliminado');
+  } catch(e) { showToast('Error al eliminar'); }
+}
+
 async function togglePago(i) {
   const alumna = alumnas[i];
   const nuevoPago = !alumna.pagada;
@@ -1596,7 +1619,7 @@ function renderBalance() {
       </div>
       <div style="display:flex;align-items:center;gap:8px;">
         <div class="mov-amount ${m.tipo.toLowerCase()}">${m.tipo === 'Ingreso' ? '+' : '-'}${fmt(m.monto)}</div>
-        ${m.tipo === 'Gasto' ? `<button onclick="eliminarMovimiento(${i})" style="background:none;border:none;color:var(--terra);font-size:18px;cursor:pointer;padding:4px;line-height:1;" title="Eliminar">🗑</button>` : ''}
+        <button onclick="eliminarMovimiento(${i})" style="background:none;border:none;color:var(--terra);font-size:18px;cursor:pointer;padding:4px;line-height:1;" title="Eliminar">🗑</button>
       </div>
     </div>
   `).join('');
