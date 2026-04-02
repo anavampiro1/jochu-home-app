@@ -495,9 +495,70 @@
   .divider { height: 8px; background: var(--nude); opacity: 0.3; margin: 4px 0; }
 
   .tag { display: inline-block; background: rgba(164,120,102,0.15); color: var(--mid); border-radius: 6px; padding: 2px 8px; font-size: 10px; margin-top: 4px; }
+
+  /* ── PIN ── */
+  .pin-screen {
+    position: fixed; inset: 0;
+    background: var(--dark);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 32px;
+  }
+  .pin-screen.hidden { display: none; }
+  .pin-logo { font-family: 'Cormorant Garamond', serif; font-size: 48px; font-weight: 600; color: var(--nude); letter-spacing: -2px; margin-bottom: 8px; }
+  .pin-sub { font-size: 11px; color: var(--terra); letter-spacing: 3px; text-transform: uppercase; margin-bottom: 48px; }
+  .pin-dots { display: flex; gap: 14px; margin-bottom: 40px; }
+  .pin-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--terra); background: transparent; transition: background 0.2s; }
+  .pin-dot.filled { background: var(--nude); border-color: var(--nude); }
+  .pin-error { font-size: 12px; color: var(--danger); margin-top: -28px; margin-bottom: 20px; height: 16px; }
+  .pin-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 100%; max-width: 280px; }
+  .pin-key {
+    background: rgba(255,255,255,0.06);
+    border: none;
+    border-radius: 16px;
+    padding: 20px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 22px;
+    color: var(--nude);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .pin-key:active { background: rgba(255,255,255,0.15); }
+  .pin-key.del { font-size: 16px; color: var(--terra); }
+  .pin-key.empty { background: transparent; pointer-events: none; }
 </style>
 </head>
 <body>
+
+<!-- PIN SCREEN -->
+<div class="pin-screen" id="pin-screen">
+  <div class="pin-logo">JOCHU</div>
+  <div class="pin-sub">home</div>
+  <div class="pin-dots">
+    <div class="pin-dot" id="pd0"></div>
+    <div class="pin-dot" id="pd1"></div>
+    <div class="pin-dot" id="pd2"></div>
+    <div class="pin-dot" id="pd3"></div>
+  </div>
+  <div class="pin-error" id="pin-error"></div>
+  <div class="pin-grid">
+    <button class="pin-key" onclick="pinPress('1')">1</button>
+    <button class="pin-key" onclick="pinPress('2')">2</button>
+    <button class="pin-key" onclick="pinPress('3')">3</button>
+    <button class="pin-key" onclick="pinPress('4')">4</button>
+    <button class="pin-key" onclick="pinPress('5')">5</button>
+    <button class="pin-key" onclick="pinPress('6')">6</button>
+    <button class="pin-key" onclick="pinPress('7')">7</button>
+    <button class="pin-key" onclick="pinPress('8')">8</button>
+    <button class="pin-key" onclick="pinPress('9')">9</button>
+    <button class="pin-key empty"></button>
+    <button class="pin-key" onclick="pinPress('0')">0</button>
+    <button class="pin-key del" onclick="pinDel()">⌫</button>
+  </div>
+</div>
 
 <!-- HEADER -->
 <header class="app-header">
@@ -588,6 +649,13 @@
           <option>Enviado</option>
           <option>Pendiente</option>
         </select>
+      </div>
+      <div class="form-group" id="combo-color-wrap" style="display:none;">
+        <label class="form-label">Combo color</label>
+        <div class="radio-group">
+          <button class="radio-chip" id="combo-color-btn" onclick="toggleComboColor(this)">+ 20% Color</button>
+        </div>
+        <div style="font-size:11px;color:var(--terra);margin-top:4px;">Activá si el hilo es de color</div>
       </div>
       <div class="form-group">
         <label class="form-label">Notas</label>
@@ -871,9 +939,12 @@
       </div>
       <button id="alumna-cuota-btn" onclick="pagarCuotaAlumna()" style="width:100%;border:none;border-radius:12px;padding:11px;font-family:DM Sans,sans-serif;font-size:13px;cursor:pointer;"></button>
     </div>
-    <div style="font-size:10px;color:var(--terra);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;">Materiales del mes</div>
+    <div style="font-size:10px;color:var(--terra);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:10px;">Materiales</div>
     <div id="alumna-materiales-list" style="margin-bottom:12px;display:flex;flex-direction:column;gap:8px;"></div>
     <button onclick="openAddMaterialModal()" style="width:100%;background:var(--white);border:1.5px dashed var(--nude);border-radius:12px;padding:12px;font-family:DM Sans,sans-serif;font-size:13px;color:var(--mid);cursor:pointer;">+ Agregar material</button>
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid rgba(242,217,206,0.3);">
+      <button onclick="marcarAlumnaInactiva()" style="width:100%;background:rgba(192,97,74,0.08);border:1px solid rgba(192,97,74,0.2);border-radius:12px;padding:11px;font-family:DM Sans,sans-serif;font-size:12px;color:var(--danger);cursor:pointer;">Marcar como inactiva</button>
+    </div>
   </div>
 </div>
 
@@ -889,6 +960,10 @@
         <input class="form-input" type="text" id="mat-producto-search" placeholder="Buscar producto..." autocomplete="off" oninput="filtrarProductosMat()" onfocus="filtrarProductosMat()">
         <div id="mat-sugerencias" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--white);border:1.5px solid var(--mid);border-radius:12px;z-index:500;max-height:180px;overflow-y:auto;box-shadow:0 4px 16px rgba(38,15,7,0.12);margin-top:4px;"></div>
       </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Fecha</label>
+      <input class="form-input" type="date" id="mat-fecha">
     </div>
     <div class="form-group">
       <label class="form-label">Monto ($)</label>
@@ -943,7 +1018,7 @@
 
 <script>
 // ═══ CONFIG ═══
-const API_URL = 'https://script.google.com/macros/s/AKfycby15jBYljtL_NGQuNw2JyHEX3FFcfkLhVM1KRgR2HugXqUg5-Hng77KURAfEJL2mN83/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzOq5VWpvosZEa5wHuQQ-iUxaafBGl6rl_TQ-0nIrOAfm0ovmQw9J7gAyd4l14uk6C0/exec';
 
 // ═══ STATE ═══
 let productos = [];
@@ -984,7 +1059,7 @@ function parseProductos(data) {
 function parseBalance(data) {
   // cols: 0=fecha,1=tipo,2=categoria,3=desc,4=ingreso,5=gasto,6=balanceAcum
   return data.slice(1).filter(r => r[1]).map(r => ({
-    fecha: r[0] ? new Date(r[0]).toISOString().split('T')[0] : '—',
+    fecha: r[0] ? (() => { const d = new Date(r[0]); return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`; })() : '—',
     tipo: r[1],
     categoria: r[2] || '',
     desc: r[3] || '',
@@ -1002,6 +1077,7 @@ function hideLoading() {
 
 // ═══ INIT ═══
 document.addEventListener('DOMContentLoaded', async () => {
+  checkPin();
   setHeaderDate();
   initVentaFecha();
   initWsFecha();
@@ -1178,6 +1254,7 @@ function agregarProductoBusqueda() {
   document.getElementById('venta-producto-search').value = '';
   document.getElementById('venta-sugerencias').style.display = 'none';
   renderVentaItems();
+  checkComboColorVisibility();
   calcularPrecioVenta();
 }
 
@@ -1190,6 +1267,7 @@ document.addEventListener('click', () => {
 function quitarProducto(i) {
   ventaItems.splice(i, 1);
   renderVentaItems();
+  checkComboColorVisibility();
   calcularPrecioVenta();
 }
 
@@ -1220,6 +1298,23 @@ function getPagoSelected() {
   return sel ? sel.textContent.trim() : 'Efectivo/Transf.';
 }
 
+let comboColorActivo = false;
+
+function toggleComboColor(btn) {
+  comboColorActivo = !comboColorActivo;
+  btn.classList.toggle('selected', comboColorActivo);
+  calcularPrecioVenta();
+}
+
+function checkComboColorVisibility() {
+  const tieneCombo = ventaItems.some(n => n.toLowerCase().startsWith('combo'));
+  document.getElementById('combo-color-wrap').style.display = tieneCombo ? 'block' : 'none';
+  if (!tieneCombo) {
+    comboColorActivo = false;
+    document.getElementById('combo-color-btn').classList.remove('selected');
+  }
+}
+
 function calcularPrecioVenta() {
   if (ventaItems.length === 0) { document.getElementById('precio-preview').classList.remove('show'); return; }
   const pago = getPagoSelected();
@@ -1231,6 +1326,7 @@ function calcularPrecioVenta() {
     else if (pago.includes('Taller')) total += p.taller;
     else total += p.efectivo;
   });
+  if (comboColorActivo) total *= 1.20;
   document.getElementById('pp-amount').textContent = fmt(total);
   document.getElementById('precio-preview').classList.add('show');
 }
@@ -1256,8 +1352,9 @@ async function registrarVenta() {
     totalPrecio += precio;
     totalGanancia += ganancia;
   });
+  if (comboColorActivo) { totalPrecio *= 1.20; totalGanancia = totalPrecio - ventaItems.reduce((a,n) => { const p = productos.find(x=>x.nombre===n); return a + (p?p.costo:0); }, 0); }
 
-  const descripcion = ventaItems.join(', ');
+  const descripcion = ventaItems.join(', ') + (comboColorActivo ? ' [+color]' : '');
   showToast('⏳ Guardando...');
   try {
     await apiPost({ action:'addVenta', fecha, via, producto: descripcion, estadoPago, estadoEnvio, precio: totalPrecio, ganancia: totalGanancia, notas });
@@ -1265,6 +1362,9 @@ async function registrarVenta() {
     renderBalance();
     showToast('✓ Venta guardada en Sheets');
     ventaItems = [];
+    comboColorActivo = false;
+    document.getElementById('combo-color-btn').classList.remove('selected');
+    document.getElementById('combo-color-wrap').style.display = 'none';
     renderVentaItems();
     document.getElementById('venta-notas').value = '';
     document.getElementById('precio-preview').classList.remove('show');
@@ -1326,11 +1426,13 @@ function parseAlumnas(data) {
   const headers = data[0];
   const mesPago = 'Pagó ' + mesActual;
   const colPago = headers.indexOf(mesPago);
-  return data.slice(1).filter(r => r[0]).map(r => ({
-    nombre: r[0],
-    clase: r[1] || '',
-    pagada: colPago >= 0 ? (r[colPago] === true || r[colPago] === "TRUE" || r[colPago] === "VERDADERO" || r[colPago] === true) : false
-  }));
+  return data.slice(1)
+    .filter(r => r[0] && !(r[0] || '').toString().startsWith('[INACTIVA]')) // excluir inactivas
+    .map(r => ({
+      nombre: r[0],
+      clase: r[1] || '',
+      pagada: colPago >= 0 ? (r[colPago] === true || r[colPago] === 'TRUE' || r[colPago] === 'VERDADERO') : false
+    }));
 }
 
 function normClase(c) { return (c || '').trim().toLowerCase().replace(/\s+/g,' '); }
@@ -1396,17 +1498,16 @@ async function openAlumnaModal(idx) {
   document.getElementById('alumna-modal-mes').textContent = mesActual;
 
   // Cuota
-  const cuotaInput = document.getElementById('alumna-cuota-input');
-  cuotaInput.value = precioCuota;
+  document.getElementById('alumna-cuota-input').value = precioCuota;
   actualizarBotonesCuota(a.pagada);
 
-  // Materiales: cargar desde Sheets
+  // Materiales: cargar TODOS (sin filtro de mes)
   materialesAlumna = [];
   renderMaterialesModal();
   document.getElementById('alumna-modal').classList.add('open');
 
   try {
-    const res = await apiPost({ action: 'getMateriales', alumna: a.nombre, mes: mesActual });
+    const res = await apiPost({ action: 'getMateriales', alumna: a.nombre, mes: 'todos' });
     materialesAlumna = res.data || [];
     renderMaterialesModal();
   } catch(e) { showToast('Error cargando materiales'); }
@@ -1431,23 +1532,44 @@ function actualizarBotonesCuota(pagada) {
 function renderMaterialesModal() {
   const list = document.getElementById('alumna-materiales-list');
   if (materialesAlumna.length === 0) {
-    list.innerHTML = `<div style="font-size:13px;color:var(--terra);text-align:center;padding:12px 0;">Sin materiales este mes</div>`;
+    list.innerHTML = `<div style="font-size:13px;color:var(--terra);text-align:center;padding:12px 0;">Sin materiales registrados</div>`;
     return;
   }
-  list.innerHTML = materialesAlumna.map((m, i) => `
-    <div style="display:flex;align-items:center;justify-content:space-between;background:var(--white);border-radius:12px;padding:12px 14px;gap:10px;">
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:13px;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${m.producto}</div>
-        <div style="font-size:11px;color:var(--terra);margin-top:2px;">${fmt(m.monto)}</div>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <span onclick="togglePagoMaterial(${i})" style="cursor:pointer;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap;${m.pagado ? 'background:rgba(122,158,126,0.15);color:var(--success);' : 'background:rgba(192,97,74,0.12);color:var(--danger);'}">
-          ${m.pagado ? '✓ Pagó' : 'Pendiente'}
-        </span>
-        <button onclick="eliminarMaterial(${i})" style="background:none;border:none;color:var(--terra);font-size:16px;cursor:pointer;padding:2px;line-height:1;" title="Eliminar">🗑</button>
-      </div>
-    </div>
-  `).join('');
+
+  // Agrupar por mes, más reciente primero
+  const ORDEN_MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const grupos = {};
+  materialesAlumna.forEach((m, i) => {
+    const key = m.mes || 'Sin mes';
+    if (!grupos[key]) grupos[key] = [];
+    grupos[key].push({ ...m, idx: i });
+  });
+  const mesesOrdenados = Object.keys(grupos).sort((a, b) => ORDEN_MESES.indexOf(b) - ORDEN_MESES.indexOf(a));
+
+  list.innerHTML = mesesOrdenados.map(mes => {
+    const items = grupos[mes];
+    const hayPendientes = items.some(m => !m.pagado);
+    return `
+      <div style="margin-bottom:8px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <span style="font-size:10px;color:var(--terra);text-transform:uppercase;letter-spacing:0.8px;">${mes}</span>
+          ${hayPendientes ? '<span style="font-size:10px;color:var(--danger);">pendiente</span>' : '<span style="font-size:10px;color:var(--success);">todo pago</span>'}
+        </div>
+        ${items.map(m => `
+        <div style="display:flex;align-items:center;justify-content:space-between;background:var(--white);border-radius:12px;padding:12px 14px;gap:10px;margin-bottom:6px;">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;color:var(--dark);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${m.producto}</div>
+            <div style="font-size:11px;color:var(--terra);margin-top:2px;">${fmt(m.monto)}${m.fecha ? ' · ' + m.fecha : ''}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span onclick="togglePagoMaterial(${m.idx})" style="cursor:pointer;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:500;white-space:nowrap;${m.pagado ? 'background:rgba(122,158,126,0.15);color:var(--success);' : 'background:rgba(192,97,74,0.12);color:var(--danger);'}">
+              ${m.pagado ? '✓ Pagó' : 'Pendiente'}
+            </span>
+            <button onclick="eliminarMaterial(${m.idx})" style="background:none;border:none;color:var(--terra);font-size:16px;cursor:pointer;padding:2px;line-height:1;">🗑</button>
+          </div>
+        </div>`).join('')}
+      </div>`;
+  }).join('');
 }
 
 async function pagarCuotaAlumna() {
@@ -1492,6 +1614,7 @@ function closeAlumnaModal() {
 function openAddMaterialModal() {
   document.getElementById('mat-producto-search').value = '';
   document.getElementById('mat-monto').value = '';
+  document.getElementById('mat-fecha').value = new Date().toISOString().split('T')[0];
   document.getElementById('mat-sugerencias').style.display = 'none';
   document.getElementById('add-material-modal').classList.add('open');
 }
@@ -1523,14 +1646,18 @@ function seleccionarProductoMat(nombre, precioTaller) {
 async function guardarMaterial() {
   const producto = document.getElementById('mat-producto-search').value.trim();
   const monto = parseFloat(document.getElementById('mat-monto').value) || 0;
+  const fechaInput = document.getElementById('mat-fecha').value;
   if (!producto) { showToast('Seleccioná un producto'); return; }
   if (!monto) { showToast('Ingresá un monto'); return; }
+  if (!fechaInput) { showToast('Ingresá la fecha'); return; }
+  // Determinar mes a partir de la fecha elegida
+  const fechaDate = new Date(fechaInput + 'T12:00:00');
+  const mesMaterial = MESES[fechaDate.getMonth()];
   const a = alumnas[alumnaModalIdx];
-  const fecha = new Date().toISOString().split('T')[0];
   showToast('⏳ Guardando...');
   try {
-    const res = await apiPost({ action: 'addMaterial', alumna: a.nombre, clase: a.clase, mes: mesActual, producto, monto, fecha });
-    materialesAlumna.push({ producto, monto, pagado: false, rowId: res.rowId });
+    const res = await apiPost({ action: 'addMaterial', alumna: a.nombre, clase: a.clase, mes: mesMaterial, producto, monto, fecha: fechaInput });
+    materialesAlumna.push({ producto, monto, pagado: false, rowId: res.rowId, mes: mesMaterial, fecha: fechaInput });
     renderMaterialesModal();
     closeAddMaterialModal();
     showToast('✓ Material agregado');
@@ -1762,6 +1889,63 @@ async function guardarPrecios() {
     document.getElementById('precio-edit-wrap').style.display = 'none';
     renderProductList();
     showToast('✓ Precios actualizados');
+  } catch(e) { showToast('Error al guardar'); }
+}
+
+// ═══ PIN ═══
+const PIN_CORRECTO = '6568'; // ← cambiá acá el PIN
+const PIN_KEY = 'jochu_auth';
+let pinActual = '';
+
+function checkPin() {
+  if (sessionStorage.getItem(PIN_KEY) === 'ok') {
+    document.getElementById('pin-screen').classList.add('hidden');
+  }
+}
+
+function pinPress(digit) {
+  if (pinActual.length >= 4) return;
+  pinActual += digit;
+  updatePinDots();
+  if (pinActual.length === 4) {
+    setTimeout(() => {
+      if (pinActual === PIN_CORRECTO) {
+        sessionStorage.setItem(PIN_KEY, 'ok');
+        document.getElementById('pin-screen').classList.add('hidden');
+        document.getElementById('pin-error').textContent = '';
+      } else {
+        document.getElementById('pin-error').textContent = 'PIN incorrecto';
+        pinActual = '';
+        updatePinDots();
+      }
+    }, 150);
+  }
+}
+
+function pinDel() {
+  pinActual = pinActual.slice(0, -1);
+  updatePinDots();
+  document.getElementById('pin-error').textContent = '';
+}
+
+function updatePinDots() {
+  for (let i = 0; i < 4; i++) {
+    document.getElementById('pd' + i).classList.toggle('filled', i < pinActual.length);
+  }
+}
+
+// ═══ ALUMNA INACTIVA ═══
+async function marcarAlumnaInactiva() {
+  const a = alumnas[alumnaModalIdx];
+  if (!confirm(`¿Marcar a ${a.nombre} como inactiva? No aparecerá más en la app, pero queda en el Excel.`)) return;
+  showToast('⏳ Guardando...');
+  try {
+    await apiPost({ action: 'marcarInactiva', nombre: a.nombre });
+    alumnas.splice(alumnaModalIdx, 1);
+    buildClaseFilters();
+    renderAlumnas();
+    closeAlumnaModal();
+    showToast('✓ Alumna marcada como inactiva');
   } catch(e) { showToast('Error al guardar'); }
 }
 
