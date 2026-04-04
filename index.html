@@ -617,6 +617,9 @@
           <button class="radio-chip" style="border-color:var(--mid);color:var(--mid);white-space:nowrap;" onclick="agregarProductoBusqueda()">+ Agregar</button>
         </div>
       </div>
+      <div style="margin-top:-6px;margin-bottom:16px;">
+        <button onclick="openVentaUnicaModal()" style="width:100%;background:transparent;border:1.5px dashed var(--terra);border-radius:12px;padding:10px;font-family:'DM Sans',sans-serif;font-size:12px;color:var(--terra);cursor:pointer;">＋ Artículo a medida / venta única</button>
+      </div>
       <div class="form-group">
         <label class="form-label">Vía de venta</label>
         <div class="radio-group" id="venta-via">
@@ -1013,12 +1016,49 @@
   </div>
 </div>
 
+<!-- VENTA ÚNICA MODAL -->
+<div class="gasto-form-overlay" id="venta-unica-modal" onclick="if(event.target===this)closeVentaUnicaModal()">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Venta única</div>
+    <div style="font-size:12px;color:var(--terra);margin-top:2px;margin-bottom:16px;">Artículo a medida o producto no listado</div>
+    <div class="form-group">
+      <label class="form-label">Fecha</label>
+      <input class="form-input" type="date" id="vu-fecha">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Descripción *</label>
+      <input class="form-input" type="text" id="vu-descripcion" placeholder="Ej: Bandeja personalizada nombre">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Tipo de pago</label>
+      <div class="radio-group" id="vu-pago">
+        <button class="radio-chip selected" onclick="selectRadio(this,'vu-pago')">Efectivo/Transf.</button>
+        <button class="radio-chip" onclick="selectRadio(this,'vu-pago')">Tarjeta</button>
+        <button class="radio-chip" onclick="selectRadio(this,'vu-pago')">Taller</button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Precio ($) *</label>
+      <input class="form-input" type="number" id="vu-precio" placeholder="$0">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notas</label>
+      <input class="form-input" type="text" id="vu-notas" placeholder="Ej: nombre del cliente">
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-close" style="background:var(--nude);color:var(--dark);flex:1;" onclick="closeVentaUnicaModal()">Cancelar</button>
+      <button class="btn-close" style="flex:1;" onclick="registrarVentaUnica()">Registrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <script>
 // ═══ CONFIG ═══
-const API_URL = 'https://script.google.com/macros/s/AKfycbxxYrjtI37BlqaxeJ3Y8RzP8N-_FA2e1g05wjeFU-buViefkHjDzc4713xnzTgcjA6v/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbyBr-ptCNIN0jAVos79UHDrzpMb8nL-OwFQc60sUwmHXfbdjjQ74z8d2X8KrYYRrwyG/exec';
 
 // ═══ STATE ═══
 let productos = [];
@@ -1892,8 +1932,45 @@ async function guardarPrecios() {
   } catch(e) { showToast('Error al guardar'); }
 }
 
+// ═══ VENTA ÚNICA ═══
+function openVentaUnicaModal() {
+  document.getElementById('vu-fecha').value = new Date().toISOString().split('T')[0];
+  document.getElementById('vu-descripcion').value = '';
+  document.getElementById('vu-precio').value = '';
+  document.getElementById('vu-notas').value = '';
+  // reset radio
+  document.querySelectorAll('#vu-pago .radio-chip').forEach((c,i) => c.classList.toggle('selected', i===0));
+  document.getElementById('venta-unica-modal').classList.add('open');
+}
+
+function closeVentaUnicaModal() {
+  document.getElementById('venta-unica-modal').classList.remove('open');
+}
+
+async function registrarVentaUnica() {
+  const fecha = document.getElementById('vu-fecha').value;
+  const desc  = document.getElementById('vu-descripcion').value.trim();
+  const precio = parseFloat(document.getElementById('vu-precio').value) || 0;
+  const notas = document.getElementById('vu-notas').value.trim();
+  const pago  = document.querySelector('#vu-pago .radio-chip.selected')?.textContent.trim() || 'Efectivo/Transf.';
+
+  if (!desc)   { showToast('Ingresá una descripción'); return; }
+  if (!precio) { showToast('Ingresá el precio'); return; }
+  if (!fecha)  { showToast('Ingresá la fecha'); return; }
+
+  const descripcionFinal = desc + (notas ? ' - ' + notas : '') + ' [única vez]';
+  showToast('⏳ Guardando...');
+  try {
+    await apiPost({ action: 'addVentaUnica', fecha, descripcion: descripcionFinal, precio, pago });
+    movimientos.unshift({ fecha, tipo: 'Ingreso', categoria: 'Venta de materiales', desc: descripcionFinal, monto: precio });
+    renderBalance();
+    closeVentaUnicaModal();
+    showToast('✓ Venta registrada en Balance');
+  } catch(e) { showToast('Error al guardar'); }
+}
+
 // ═══ PIN ═══
-const PIN_CORRECTO = '6568'; // ← cambiá acá el PIN
+const PIN_CORRECTO = '1234'; // ← cambiá acá el PIN
 const PIN_KEY = 'jochu_auth';
 let pinActual = '';
 
