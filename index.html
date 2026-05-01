@@ -956,12 +956,24 @@
   <div class="modal-sheet">
     <div class="modal-handle"></div>
     <div class="modal-title">Agregar material</div>
-    <div style="height:12px"></div>
-    <div class="form-group">
-      <label class="form-label">Producto</label>
-      <div style="position:relative;">
-        <input class="form-input" type="text" id="mat-producto-search" placeholder="Buscar producto..." autocomplete="off" oninput="filtrarProductosMat()" onfocus="filtrarProductosMat()">
-        <div id="mat-sugerencias" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--white);border:1.5px solid var(--mid);border-radius:12px;z-index:500;max-height:180px;overflow-y:auto;box-shadow:0 4px 16px rgba(38,15,7,0.12);margin-top:4px;"></div>
+    <div style="height:8px"></div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <button id="mat-tab-lista" class="radio-chip selected" onclick="setMatTab('lista')" style="flex:1;text-align:center;">De la lista</button>
+      <button id="mat-tab-medida" class="radio-chip" onclick="setMatTab('medida')" style="flex:1;text-align:center;">A medida</button>
+    </div>
+    <div id="mat-panel-lista">
+      <div class="form-group">
+        <label class="form-label">Producto</label>
+        <div style="position:relative;">
+          <input class="form-input" type="text" id="mat-producto-search" placeholder="Buscar producto..." autocomplete="off" oninput="filtrarProductosMat()" onfocus="filtrarProductosMat()">
+          <div id="mat-sugerencias" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--white);border:1.5px solid var(--mid);border-radius:12px;z-index:500;max-height:180px;overflow-y:auto;box-shadow:0 4px 16px rgba(38,15,7,0.12);margin-top:4px;"></div>
+        </div>
+      </div>
+    </div>
+    <div id="mat-panel-medida" style="display:none;">
+      <div class="form-group">
+        <label class="form-label">Descripción *</label>
+        <input class="form-input" type="text" id="mat-descripcion-libre" placeholder="Ej: Bandeja personalizada">
       </div>
     </div>
     <div class="form-group">
@@ -1058,7 +1070,7 @@
 
 <script>
 // ═══ CONFIG ═══
-const API_URL = 'https://script.google.com/macros/s/AKfycbyBr-ptCNIN0jAVos79UHDrzpMb8nL-OwFQc60sUwmHXfbdjjQ74z8d2X8KrYYRrwyG/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycby7bji2CC3kahf3WQoNlhk7wkXvVfZnihhsFgKrIpLOOSTBJOcYzto78ZRs1fZ_qg/exec';
 
 // ═══ STATE ═══
 let productos = [];
@@ -1651,11 +1663,26 @@ function closeAlumnaModal() {
 }
 
 // ── AGREGAR MATERIAL ──
+function setMatTab(tab) {
+  const esLista = tab === 'lista';
+  document.getElementById('mat-tab-lista').classList.toggle('selected', esLista);
+  document.getElementById('mat-tab-medida').classList.toggle('selected', !esLista);
+  document.getElementById('mat-panel-lista').style.display = esLista ? 'block' : 'none';
+  document.getElementById('mat-panel-medida').style.display = esLista ? 'none' : 'block';
+  if (esLista) {
+    document.getElementById('mat-producto-search').value = '';
+    document.getElementById('mat-sugerencias').style.display = 'none';
+  } else {
+    document.getElementById('mat-descripcion-libre').value = '';
+  }
+}
+
 function openAddMaterialModal() {
   document.getElementById('mat-producto-search').value = '';
   document.getElementById('mat-monto').value = '';
   document.getElementById('mat-fecha').value = new Date().toISOString().split('T')[0];
   document.getElementById('mat-sugerencias').style.display = 'none';
+  setMatTab('lista');
   document.getElementById('add-material-modal').classList.add('open');
 }
 function closeAddMaterialModal() {
@@ -1684,10 +1711,13 @@ function seleccionarProductoMat(nombre, precioTaller) {
 }
 
 async function guardarMaterial() {
-  const producto = document.getElementById('mat-producto-search').value.trim();
+  const esMedida = document.getElementById('mat-tab-medida') && document.getElementById('mat-tab-medida').classList.contains('selected');
+  const producto = esMedida
+    ? document.getElementById('mat-descripcion-libre').value.trim()
+    : document.getElementById('mat-producto-search').value.trim();
   const monto = parseFloat(document.getElementById('mat-monto').value) || 0;
   const fechaInput = document.getElementById('mat-fecha').value;
-  if (!producto) { showToast('Seleccioná un producto'); return; }
+  if (!producto) { showToast(esMedida ? 'Ingresá una descripción' : 'Seleccioná un producto'); return; }
   if (!monto) { showToast('Ingresá un monto'); return; }
   if (!fechaInput) { showToast('Ingresá la fecha'); return; }
   // Determinar mes a partir de la fecha elegida
@@ -1970,7 +2000,7 @@ async function registrarVentaUnica() {
 }
 
 // ═══ PIN ═══
-const PIN_CORRECTO = '6568'; // ← cambiá acá el PIN
+const PIN_CORRECTO = '1234'; // ← cambiá acá el PIN
 const PIN_KEY = 'jochu_auth';
 let pinActual = '';
 
