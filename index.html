@@ -1865,7 +1865,7 @@ function buildBalanceFilters() {
   });
   // mesesOrden ya viene de más reciente a más viejo (movimientos están reversed)
   const row = document.getElementById('balance-filter-row');
-  row.innerHTML = '<button class="filter-chip active" onclick="setBalanceMes('todo', this)">Todo</button>';
+  row.innerHTML = '<button class="filter-chip active" onclick="setBalanceMes(&quot;todo&quot;, this)">Todo</button>';
   mesesOrden.forEach(key => {
     const [anio, mes] = key.split('-');
     const nombreMes = MESES[parseInt(mes) - 1];
