@@ -697,25 +697,26 @@
       </div>
       <div class="form-group">
         <label class="form-label">Tipo de armazón</label>
-        <select class="form-select" id="ws-armazon">
-          <option>Servilletero</option>
-          <option>Organizador Grande</option>
-          <option>Organizador Mediano</option>
-          <option>Bandeja Grande</option>
-          <option>Bandeja Mediana</option>
-          <option>Otro</option>
+        <select class="form-select" id="ws-armazon" onchange="calcularWorkshop()">
+          <option value="">Seleccioná...</option>
         </select>
+        <div style="font-size:11px;color:var(--terra);margin-top:4px;" id="ws-armazon-costo-label"></div>
       </div>
       <div class="form-group">
         <label class="form-label">Combos usados</label>
         <input class="form-input" type="number" id="ws-combos" placeholder="0" oninput="calcularWorkshop()">
       </div>
       <div class="form-group">
+        <label class="form-label">Metros de hilo por combo</label>
+        <input class="form-input" type="number" id="ws-hilo-metros" placeholder="0" oninput="calcularWorkshop()">
+        <div style="font-size:11px;color:var(--terra);margin-top:4px;" id="ws-hilo-costo-label"></div>
+      </div>
+      <div class="form-group">
         <label class="form-label">Otros gastos por combo ($)</label>
         <input class="form-input" type="number" id="ws-otros" placeholder="$0" oninput="calcularWorkshop()">
       </div>
       <div class="form-group">
-        <label class="form-label">Gastos merienda ($)</label>
+        <label class="form-label">Gastos merienda total ($)</label>
         <input class="form-input" type="number" id="ws-merienda" placeholder="$0" oninput="calcularWorkshop()">
       </div>
       <div class="form-group">
@@ -803,8 +804,12 @@
         Registrar retiro
       </button>
     </div>
+    <!-- Filtro por mes -->
+    <div class="filter-row" id="balance-filter-row" style="padding-top:4px;padding-bottom:8px;">
+      <button class="filter-chip active" onclick="setBalanceMes('todo', this)">Todo</button>
+    </div>
     <div class="movimiento-list">
-      <div class="mov-header">Últimos movimientos</div>
+      <div class="mov-header" id="mov-header-label">Últimos movimientos</div>
       <div id="movimientos-list"></div>
     </div>
   </section>
@@ -1070,7 +1075,7 @@
 
 <script>
 // ═══ CONFIG ═══
-const API_URL = 'https://script.google.com/macros/s/AKfycby7bji2CC3kahf3WQoNlhk7wkXvVfZnihhsFgKrIpLOOSTBJOcYzto78ZRs1fZ_qg/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycby15jBYljtL_NGQuNw2JyHEX3FFcfkLhVM1KRgR2HugXqUg5-Hng77KURAfEJL2mN83/exec';
 
 // ═══ STATE ═══
 let productos = [];
@@ -1141,6 +1146,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     productos = parseProductos(res.data);
     renderProductList();
     populateVentaSelect();
+    populateArmazones();
   } catch(e) {
     showToast('Error cargando productos');
   }
@@ -1149,6 +1155,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     const res = await apiGet('getBalance');
     movimientos = parseBalance(res.data);
+    buildBalanceFilters();
     renderBalance();
   } catch(e) {
     showToast('Error cargando balance');
@@ -1424,18 +1431,59 @@ async function registrarVenta() {
 }
 
 // ═══ WORKSHOPS ═══
+function populateArmazones() {
+  // Llena el select con productos que no son hilo ni combo (productos[0..3] son hilos)
+  const sel = document.getElementById('ws-armazon');
+  if (!sel) return;
+  const opciones = productos.slice(4).filter(p => p.tipo !== 'combo');
+  sel.innerHTML = '<option value="">Seleccioná...</option>';
+  opciones.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.nombre;
+    opt.dataset.costo = p.costo;
+    opt.textContent = p.nombre;
+    sel.appendChild(opt);
+  });
+}
+
+function getArmazonCosto() {
+  const sel = document.getElementById('ws-armazon');
+  if (!sel || !sel.value) return 0;
+  const opt = sel.querySelector(`option[value="${sel.value}"]`);
+  return opt ? parseFloat(opt.dataset.costo) || 0 : 0;
+}
+
+function getHiloCostoPorMetro() {
+  // E2 = productos[0].costo (primera fila de costos y precios)
+  return productos.length > 0 ? productos[0].costo : 0;
+}
+
 function calcularWorkshop() {
   const precio = +document.getElementById('ws-precio').value || 0;
-  const asist = +document.getElementById('ws-asistentes').value || 0;
+  const asist  = +document.getElementById('ws-asistentes').value || 0;
   const combos = +document.getElementById('ws-combos').value || 0;
-  const otros = +document.getElementById('ws-otros').value || 0;
+  const metros = +document.getElementById('ws-hilo-metros').value || 0;
+  const otros  = +document.getElementById('ws-otros').value || 0;
   const merienda = +document.getElementById('ws-merienda').value || 0;
-  const nafta = +document.getElementById('ws-nafta').value || 0;
+  const nafta  = +document.getElementById('ws-nafta').value || 0;
+
+  const costoArmazon = getArmazonCosto();
+  const costoHiloM   = getHiloCostoPorMetro();
+  const costoHilo    = metros * costoHiloM;
+
+  // Mostrar info de costos
+  const armazonSel = document.getElementById('ws-armazon').value;
+  document.getElementById('ws-armazon-costo-label').textContent =
+    armazonSel ? `Costo: ${fmt(costoArmazon)} por unidad` : '';
+  document.getElementById('ws-hilo-costo-label').textContent =
+    metros > 0 ? `${fmt(costoHiloM)}/m × ${metros}m = ${fmt(costoHilo)} por combo` : `Costo hilo: ${fmt(costoHiloM)}/metro`;
 
   if (!precio && !asist) return;
 
   const bruto = precio * asist;
-  const gastos = (otros * combos) + merienda + nafta;
+  // Gastos = (costo armazón + costo hilo + otros) × combos + merienda + nafta
+  const gastoPorCombo = costoArmazon + costoHilo + otros;
+  const gastos = (gastoPorCombo * combos) + merienda + nafta;
   const neta = bruto - gastos;
 
   document.getElementById('wc-bruto').textContent = fmt(bruto);
@@ -1447,23 +1495,31 @@ function calcularWorkshop() {
 async function registrarWorkshop() {
   const nombre = document.getElementById('ws-nombre').value;
   if (!nombre) { showToast('Ingresá el nombre del workshop'); return; }
-  const precio = +document.getElementById('ws-precio').value || 0;
-  const asist = +document.getElementById('ws-asistentes').value || 0;
-  const combos = +document.getElementById('ws-combos').value || 0;
-  const otros = +document.getElementById('ws-otros').value || 0;
+  const precio   = +document.getElementById('ws-precio').value || 0;
+  const asist    = +document.getElementById('ws-asistentes').value || 0;
+  const combos   = +document.getElementById('ws-combos').value || 0;
+  const metros   = +document.getElementById('ws-hilo-metros').value || 0;
+  const otros    = +document.getElementById('ws-otros').value || 0;
   const merienda = +document.getElementById('ws-merienda').value || 0;
-  const nafta = +document.getElementById('ws-nafta').value || 0;
-  const bruto = precio * asist;
-  const gastos = (otros * combos) + merienda + nafta;
-  const neta = bruto - gastos;
+  const nafta    = +document.getElementById('ws-nafta').value || 0;
+  const costoArmazon = getArmazonCosto();
+  const costoHilo    = metros * getHiloCostoPorMetro();
+  const bruto  = precio * asist;
+  const gastoPorCombo = costoArmazon + costoHilo + otros;
+  const gastos = (gastoPorCombo * combos) + merienda + nafta;
+  const neta   = bruto - gastos;
+  const armazon = document.getElementById('ws-armazon').value || 'Sin especificar';
   showToast('⏳ Guardando...');
   try {
-    await apiPost({ action:'addWorkshop', fecha: document.getElementById('ws-fecha').value, nombre, precio, asistentes: asist, combos, armazon: document.getElementById('ws-armazon').value, otrosXcombo: otros, merienda, nafta, neta, bruto });
+    await apiPost({ action:'addWorkshop', fecha: document.getElementById('ws-fecha').value, nombre, precio, asistentes: asist, combos, armazon, hiloXcombo: metros, otrosXcombo: otros, merienda, nafta, neta, bruto });
     movimientos.unshift({ fecha: document.getElementById('ws-fecha').value, tipo:'Ingreso', categoria:'Workshop', desc: nombre, monto: bruto });
     if (gastos > 0) movimientos.unshift({ fecha: document.getElementById('ws-fecha').value, tipo:'Gasto', categoria:'Workshop gastos', desc:`Gastos: ${nombre}`, monto: gastos });
     renderBalance();
     showToast('✓ Workshop guardado en Sheets');
-    ['ws-nombre','ws-precio','ws-asistentes','ws-combos','ws-otros','ws-merienda','ws-nafta'].forEach(id => document.getElementById(id).value = '');
+    ['ws-nombre','ws-precio','ws-asistentes','ws-combos','ws-hilo-metros','ws-otros','ws-merienda','ws-nafta'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('ws-armazon').value = '';
+    document.getElementById('ws-armazon-costo-label').textContent = '';
+    document.getElementById('ws-hilo-costo-label').textContent = '';
     document.getElementById('ws-calc').style.display = 'none';
   } catch(e) { showToast('Error al guardar'); }
 }
@@ -1794,20 +1850,77 @@ async function guardarCuota() {
 }
 
 // ═══ BALANCE ═══
+let balanceMesFiltro = 'todo';
+
+function buildBalanceFilters() {
+  // Extraer meses únicos de los movimientos (formato YYYY-MM-DD → mes/año)
+  const vistos = new Set();
+  const mesesOrden = [];
+  movimientos.forEach(m => {
+    if (!m.fecha || m.fecha === '—') return;
+    const parts = m.fecha.split('-');
+    if (parts.length < 2) return;
+    const key = parts[0] + '-' + parts[1]; // YYYY-MM
+    if (!vistos.has(key)) { vistos.add(key); mesesOrden.push(key); }
+  });
+  // mesesOrden ya viene de más reciente a más viejo (movimientos están reversed)
+  const row = document.getElementById('balance-filter-row');
+  row.innerHTML = '<button class="filter-chip active" onclick="setBalanceMes('todo', this)">Todo</button>';
+  mesesOrden.forEach(key => {
+    const [anio, mes] = key.split('-');
+    const nombreMes = MESES[parseInt(mes) - 1];
+    const btn = document.createElement('button');
+    btn.className = 'filter-chip';
+    btn.textContent = nombreMes + ' ' + anio;
+    btn.dataset.key = key;
+    btn.onclick = function() { setBalanceMes(key, this); };
+    row.appendChild(btn);
+  });
+}
+
+function setBalanceMes(key, el) {
+  balanceMesFiltro = key;
+  document.querySelectorAll('#balance-filter-row .filter-chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderBalance();
+}
+
 function renderBalance() {
-  const ingresos = movimientos.filter(m => m.tipo === 'Ingreso').reduce((a,m) => a + m.monto, 0);
-  const gastos = movimientos.filter(m => m.tipo === 'Gasto').reduce((a,m) => a + m.monto, 0);
-  const total = ingresos - gastos;
+  // Filtrar movimientos según el mes seleccionado
+  const filtrados = balanceMesFiltro === 'todo'
+    ? movimientos
+    : movimientos.filter(m => m.fecha && m.fecha.startsWith(balanceMesFiltro));
+
+  const ingresos = filtrados.filter(m => m.tipo === 'Ingreso').reduce((a,m) => a + m.monto, 0);
+  const gastos   = filtrados.filter(m => m.tipo === 'Gasto').reduce((a,m) => a + m.monto, 0);
+  const total    = balanceMesFiltro === 'todo'
+    ? movimientos.reduce((a,m) => a + (m.tipo === 'Ingreso' ? m.monto : -m.monto), 0)
+    : ingresos - gastos;
 
   const el = document.getElementById('balance-total');
   el.textContent = fmt(total);
   el.className = 'balance-amount' + (total < 0 ? ' negative' : '');
   document.getElementById('balance-ingresos').textContent = fmt(ingresos);
   document.getElementById('balance-gastos').textContent = fmt(gastos);
-  document.getElementById('balance-mes').textContent = 'Actualizado hoy';
+
+  if (balanceMesFiltro === 'todo') {
+    document.getElementById('balance-label') && (document.getElementById('balance-label').textContent = 'Balance acumulado');
+    document.getElementById('balance-mes').textContent = 'Actualizado hoy';
+  } else {
+    const [anio, mes] = balanceMesFiltro.split('-');
+    document.getElementById('balance-mes').textContent = MESES[parseInt(mes)-1] + ' ' + anio;
+  }
+
+  // Lista: si hay filtro muestra todos; si no, últimos 20
+  const lista = balanceMesFiltro === 'todo' ? filtrados.slice(0,20) : filtrados;
+  document.getElementById('mov-header-label').textContent = balanceMesFiltro === 'todo'
+    ? 'Últimos movimientos'
+    : `Movimientos — ${MESES[parseInt(balanceMesFiltro.split('-')[1])-1]}`;
 
   const list = document.getElementById('movimientos-list');
-  list.innerHTML = movimientos.slice(0,20).map((m, i) => `
+  list.innerHTML = lista.map((m) => {
+    const i = movimientos.indexOf(m);
+    return `
     <div class="mov-item" id="mov-${i}">
       <div class="mov-icon ${m.tipo.toLowerCase()}">${m.tipo === 'Ingreso' ? '↑' : '↓'}</div>
       <div class="mov-info">
@@ -1818,8 +1931,8 @@ function renderBalance() {
         <div class="mov-amount ${m.tipo.toLowerCase()}">${m.tipo === 'Ingreso' ? '+' : '-'}${fmt(m.monto)}</div>
         <button onclick="eliminarMovimiento(${i})" style="background:none;border:none;color:var(--terra);font-size:18px;cursor:pointer;padding:4px;line-height:1;" title="Eliminar">🗑</button>
       </div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 function openGastoForm() {
